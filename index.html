@@ -113,6 +113,17 @@
   .howto ul{margin:2px 0 4px;padding-left:18px;line-height:1.55}
   .howto li{margin:5px 0}
   .howto b{color:var(--ink);font-weight:700}
+  .setup{gap:8px}
+  .nameInput,.fSel{font:inherit;font-size:13px;padding:7px 10px;border-radius:9px;
+    border:1px solid var(--ghostborder);background:var(--bg);color:var(--ink);max-width:160px}
+  .fSel{cursor:pointer}
+  .credit{text-align:center;font-size:11px;color:var(--hint);margin:8px auto 2px}
+  .credit b{color:var(--sub);font-weight:600}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;max-width:440px;margin:4px auto 0}
+  .chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;
+    padding:4px 9px;border-radius:14px;border:1.5px solid #2f9be0;color:var(--ink);background:transparent;cursor:pointer}
+  .chip b{color:var(--sub);font-size:14px;line-height:1}
+  .chip.out{border-color:#9aa0a6;border-style:dashed;opacity:.6;text-decoration:line-through}
 </style>
 </head>
 <body>
@@ -133,10 +144,16 @@
       <button id="chaosBtn" class="ghost">Chaos</button>
       <button id="soundBtn" class="ghost" aria-label="Toggle sound">🔇</button>
     </div>
+    <div class="toolbar setup">
+      <input id="nameInput" class="nameInput" placeholder="Your name" maxlength="24" spellcheck="false" autocomplete="off">
+      <select id="followSel" class="fSel"><option value="">⭐ Follow a team…</option></select>
+    </div>
+    <div id="followChips" class="chips"></div>
     <div id="odds" class="odds"></div>
   </header>
   <div class="stage"><div id="svgHost"></div><div id="centerLogo" class="centerLogo"></div><div id="tip" class="tip"></div></div>
   <footer>Tap to advance · press &amp; hold for team info · ⚡ marks an upset · final winner lifts the trophy</footer>
+  <div class="credit">Original radial bracket design by <b>Emilio Sansolini</b></div>
   <details class="howto">
     <summary>How to play</summary>
     <ul>
@@ -144,6 +161,7 @@
       <li><b>Press &amp; hold</b> any flag for its profile — nickname, best World Cup, win chance vs its opponent, odds to reach the final and win the cup, a strength slider for "what if", and <b>Show route</b> to trace its path.</li>
       <li><b>▶ Simulate</b> auto-plays the whole bracket · <b>Chalk</b> fills by favourites · <b>Chaos</b> goes wild.</li>
       <li><b>⚡</b> marks an upset — an underdog beating a stronger side.</li>
+      <li><b>Follow your team</b> from the dropdown to spotlight your sweepstake side (with a cheeky message if they're already out). Press &amp; hold a flag for its real venue &amp; date.</li>
       <li><b>Undo</b> steps back · <b>Reset</b> clears the board · <b>Share</b> exports an image card to post.</li>
       <li><b>🔇</b> toggles sound · <b>🌙 / ☀</b> toggles dark mode. Your picks live in the link, so a shared URL reopens your exact bracket.</li>
     </ul>
@@ -347,7 +365,7 @@
 
   // ---------- rendering ----------
   let TH={line:'#2c2a26',dot:'#c9bba4',ring:'#2b2b26',label:'#6b6456'};
-  function flagGroup(node,clickable,gold,upset){
+  function flagGroup(node,clickable,gold,upset,follow){
     const s=node.r, id=TEAMS[node.team][1];
     const ring=gold?'#cf9f33':TH.ring;
     const rw=gold?2.2:1.4;
@@ -355,6 +373,7 @@
     g+='<circle r="'+s+'" fill="#fff"/>';
     g+='<g clip-path="url(#clip'+s+')"><g transform="translate('+(-1.5*s)+','+(-s)+') scale('+(s/20)+')">'+FLAGS[id]+'</g></g>';
     g+='<circle r="'+s+'" fill="none" stroke="'+ring+'" stroke-width="'+rw+'"/>';
+    if(follow) g+='<circle r="'+(s+3.2).toFixed(1)+'" fill="none" stroke="'+(follow===2?'#9aa0a6':'#2f9be0')+'" stroke-width="2.6"'+(follow===2?' stroke-dasharray="3 3"':'')+'/>';
     if(upset) g+='<g transform="translate('+(0.7*s).toFixed(1)+','+(-0.7*s).toFixed(1)+')"><circle r="6.6" fill="#e6a019" stroke="#fff" stroke-width="1.1"/><path d="M0.8 -3.6 L-2.4 0.6 L-0.3 0.6 L-1 3.6 L2.4 -0.8 L0.2 -0.8 Z" fill="#fff"/></g>';
     if(clickable) g+='<circle class="flaghit" r="'+s+'" fill="#000" opacity="0" data-node="1" data-r="'+node.round+'" data-i="'+node.idx+'"/>';
     g+='</g>';
@@ -362,6 +381,7 @@
   }
   function buildSVG(){
     const champTeam=champ.team;
+    const folStat={}; followed.forEach(t=>{ folStat[t]=teamStatus(t).out?2:1; });
     const cs=getComputedStyle(document.body);
     TH.line=(cs.getPropertyValue('--line').trim())||TH.line;
     TH.dot=(cs.getPropertyValue('--dot').trim())||TH.dot;
@@ -418,14 +438,18 @@
     rounds[1].concat(rounds[2],rounds[3],rounds[4]).forEach(n=>{
       if(n.team==null || flyingSet.has(n)) nodesSvg+='<circle cx="'+n.x.toFixed(1)+'" cy="'+n.y.toFixed(1)+'" r="3.2" fill="'+TH.dot+'"/>';
     });
-    rounds[0].forEach(n=> nodesSvg+=flagGroup(n,true, champTeam!=null && n.team===champTeam));
+    rounds[0].forEach(n=>{
+      const fol=followed.has(n.team)?folStat[n.team]:0;
+      nodesSvg+=flagGroup(n,true, champTeam!=null && n.team===champTeam, false, fol);
+    });
     // always-on country codes outside the outer ring
     rounds[0].forEach(n=>{
-      const lr=Rn[0]+FR[0]+9, ar=n.angle*Math.PI/180;
-      const lx=cx+lr*Math.sin(ar), ly=cy-lr*Math.cos(ar);
+      const ar=n.angle*Math.PI/180, sn=Math.sin(ar);
+      const lr=Rn[0]+FR[0]+10, lx=cx+lr*sn, ly=cy-lr*Math.cos(ar);
+      const anchor=(sn>0.30)?'start':((sn<-0.30)?'end':'middle');
       const gold=(champTeam!=null && n.team===champTeam);
-      nodesSvg+='<text x="'+lx.toFixed(1)+'" y="'+ly.toFixed(1)+'" text-anchor="middle" '+
-        'dominant-baseline="central" font-size="12.5" font-weight="700" letter-spacing="0.4" '+
+      nodesSvg+='<text x="'+lx.toFixed(1)+'" y="'+ly.toFixed(1)+'" text-anchor="'+anchor+'" '+
+        'dominant-baseline="central" font-size="12" font-weight="700" letter-spacing="0.3" '+
         'font-family="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif" '+
         'fill="'+(gold?'#cf9f33':TH.label)+'">'+TEAMS[n.team][1]+'</text>';
     });
@@ -433,7 +457,8 @@
       if(n.team!=null && !flyingSet.has(n)){
         const loser=(n.a.team===n.team)?n.b.team:n.a.team;
         const up=(loser!=null && ratingOf(loser)>ratingOf(n.team)+40);
-        nodesSvg+=flagGroup(n,true, champTeam!=null && n.team===champTeam, up);
+        const fol=followed.has(n.team)?folStat[n.team]:0;
+        nodesSvg+=flagGroup(n,true, champTeam!=null && n.team===champTeam, up, fol);
       }
     });
 
@@ -478,7 +503,7 @@
 
   const host=document.getElementById('svgHost');
   const stage=document.querySelector('.stage');
-  let flyingSet=new Set(), animating=false, simRunning=false, highlightTeam=null;
+  let flyingSet=new Set(), animating=false, simRunning=false, highlightTeam=null, followed=new Set(), userName='';
   let suppressClick=false;
   const sheet=document.getElementById('sheet'), sheetBack=document.getElementById('sheetBack');
   const RN=['Round of 32','Round of 16','Quarter-final','Semi-final','Final'];
@@ -502,6 +527,7 @@
       '<div class="sRow"><span>Best World Cup</span><span>'+inf[2]+'</span></div>'+
       '<div class="sRow"><span>Tournaments played</span><span>'+inf[3]+'</span></div>'+
       '<div class="sRow"><span>'+lab+'</span><span>'+opp+'</span></div>'+
+      '<div class="sRow"><span>Match</span><span>'+(fixtureFor(node)||'TBD')+'</span></div>'+
       h2hRow+
       '<div class="sRow"><span>Reach the final</span><span id="sFinal">'+fmtPct(finalOdds[tm])+'</span></div>'+
       '<div class="sRow"><span>Win the cup</span><span id="sCup">'+fmtPct(cupOdds[tm])+'</span></div>'+
@@ -554,6 +580,8 @@
     lastChampTeam=champ.team;
     updateOdds();
     try{ history.replaceState(null,'','#'+encode()); }catch(e){}
+    try{ localStorage.setItem('wc26-bracket',encode()); }catch(e){}
+    if(typeof renderChips==='function') renderChips();
   }
 
   // ---------- events ----------
@@ -621,8 +649,44 @@
     const el=document.getElementById('toast'); el.textContent=msg; el.classList.add('show');
     clearTimeout(toastTimer); toastTimer=setTimeout(()=>el.classList.remove('show'),1700);
   }
+  // real WC2026 Round-of-32 fixtures, keyed by rounds[1] node index (leaf pair)
+  const FIXTURES={
+    0:['Mon 29 Jun','NRG Stadium, Houston'], 1:['Tue 30 Jun','AT&T Stadium, Dallas'],
+    2:['Tue 30 Jun','Estadio Azteca, Mexico City'], 3:['Wed 1 Jul','Mercedes-Benz Stadium, Atlanta'],
+    4:['Fri 3 Jul','Hard Rock Stadium, Miami'], 5:['Fri 3 Jul','AT&T Stadium, Dallas'],
+    6:['Thu 2 Jul','BC Place, Vancouver'], 7:['Fri 3 Jul','Arrowhead Stadium, Kansas City'],
+    8:['Wed 1 Jul','Lumen Field, Seattle'], 9:['Wed 1 Jul',"Levi's Stadium, Santa Clara"],
+    10:['Thu 2 Jul','SoFi Stadium, Los Angeles'], 11:['Thu 2 Jul','BMO Field, Toronto'],
+    12:['Mon 29 Jun','Estadio BBVA, Monterrey'], 13:['Sun 28 Jun','SoFi Stadium, Los Angeles'],
+    14:['Tue 30 Jun','MetLife Stadium, New Jersey'], 15:['Sun 28 Jun','Gillette Stadium, Boston']
+  };
+  function fixtureFor(node){
+    const p=node.parent; if(!p) return null;
+    if(p.round===1){ const f=FIXTURES[p.idx]; return f?(f[0]+' · '+f[1]):null; }
+    if(p.round===2) return 'Round of 16 · 4–7 Jul';
+    if(p.round===3) return 'Quarter-final · 9–11 Jul';
+    if(p.round===4) return 'Semi-final · 14–15 Jul';
+    if(p.round===5) return 'Final · Sun 19 Jul · MetLife Stadium, New Jersey';
+    return null;
+  }
+  function teamStatus(idx){
+    let n=rounds[0][idx].parent;
+    while(n){ if(n.team!=null){ if(n.team!==idx) return {out:true,atRound:n.round}; } else return {out:false}; n=n.parent; }
+    return {out:false};
+  }
+  function eliminationQuip(idx,round){
+    const T=TEAMS[idx][0], r=(RN[round-1]||'knockouts');
+    const q=[
+      T+" are out — time to 'support the hosts' and pretend you always did.",
+      T+" crashed out in the "+r+". There's always 2030 (you'll say that again in 2030).",
+      T+" are gone. Quietly slide their flag off your desk before anyone notices.",
+      T+" eliminated. Blame whoever drew them for you in the sweepstake.",
+      T+" are out — at least you can stop pretending to know their starting XI."
+    ];
+    return '😬 '+q[Math.floor(Math.random()*q.length)];
+  }
   function predictionSummary(){
-    const lines=['My World Cup 2026 bracket 🏆'];
+    const lines=[(userName?userName+"'s":'My')+' World Cup 2026 bracket 🏆'];
     if(champ.team!=null){
       lines.push('Champions: '+TEAMS[champ.team][0]);
     } else {
@@ -652,6 +716,7 @@
     function circ(img,cx,cy,r,rw){ x.save(); x.beginPath(); x.arc(cx,cy,r,0,7); x.closePath(); x.clip(); x.fillStyle='#fff'; x.fill(); if(img){ const w=2*r*1.5,hh=2*r; x.drawImage(img,cx-w/2,cy-hh/2,w,hh);} x.restore(); x.beginPath(); x.arc(cx,cy,r,0,7); x.lineWidth=rw||4; x.strokeStyle=gold; x.stroke(); }
     lab('WORLD CUP 2026',540,118,62,ink,'800');
     lab('MY BRACKET PREDICTION',540,178,28,sub,'600');
+    if(userName) lab('by '+userName,540,224,28,gold,'700');
     const ct=champ.team, fin=[rounds[4][0].team,rounds[4][1].team],
           semi=[rounds[3][0].team,rounds[3][1].team,rounds[3][2].team,rounds[3][3].team];
     if(ct!=null){ const ci=await loadImg(flagDataURL(TEAMS[ct][1])); circ(ci,540,410,120,7);
@@ -672,7 +737,7 @@
     if(blob){
       const file=new File([blob],'wc26-bracket.png',{type:'image/png'});
       if(navigator.canShare && navigator.canShare({files:[file]})){
-        try{ await navigator.share({files:[file], text}); return; }
+        try{ await navigator.share({files:[file]}); return; }
         catch(err){ if(err && err.name==='AbortError') return; }
       }
       const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='wc26-bracket.png'; a.click();
@@ -782,9 +847,42 @@
   soundBtn.addEventListener('click',()=>{ soundOn=!soundOn; soundBtn.textContent=soundOn?'🔊':'🔇'; if(soundOn){ const c=audioCtx(); if(c&&c.state==='suspended') c.resume(); blip(720); } });
   computeTournamentOdds();
 
-  // load from hash if present
-  const h=(location.hash||'').replace(/^#/,'');
-  if(h) applyCode(h);
+  // restore: shared link (hash) wins, else last saved bracket on this device
+  const _h=(location.hash||'').replace(/^#/,'');
+  if(_h){ applyCode(_h); }
+  else { try{ const s=localStorage.getItem('wc26-bracket'); if(s) applyCode(s); }catch(e){} }
+  try{ userName=localStorage.getItem('wc26-name')||''; }catch(e){}
+  const nameInput=document.getElementById('nameInput');
+  if(nameInput){ nameInput.value=userName;
+    nameInput.addEventListener('input',()=>{ userName=nameInput.value.trim(); try{localStorage.setItem('wc26-name',userName);}catch(e){} }); }
+  const followSel=document.getElementById('followSel');
+  const followChips=document.getElementById('followChips');
+  function persistFollow(){ try{ localStorage.setItem('wc26-follow',[...followed].join(',')); }catch(e){} }
+  function renderChips(){
+    if(!followChips) return;
+    followChips.innerHTML=[...followed].map(t=>'<span class="chip'+(teamStatus(t).out?' out':'')+'" data-t="'+t+'">'+TEAMS[t][1]+' <b>×</b></span>').join('');
+  }
+  if(followSel){
+    TEAMS.map((t,i)=>[t[0],i]).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([nm,i])=>{
+      const o=document.createElement('option'); o.value=i; o.textContent=nm; followSel.appendChild(o); });
+    followSel.addEventListener('change',()=>{
+      const v=followSel.value; followSel.value='';
+      if(v==='') return;
+      const t=+v;
+      if(!followed.has(t)){
+        followed.add(t);
+        const st=teamStatus(t);
+        toast(st.out?eliminationQuip(t,st.atRound):('Following '+TEAMS[t][0]+' — still in it! 🤞'));
+      }
+      persistFollow(); renderChips(); render();
+    });
+  }
+  if(followChips){
+    followChips.addEventListener('click',e=>{ const c=e.target.closest('.chip'); if(!c) return;
+      followed.delete(+c.getAttribute('data-t')); persistFollow(); renderChips(); render(); });
+  }
+  try{ const fs=localStorage.getItem('wc26-follow'); if(fs) fs.split(',').forEach(x=>{ if(x!=='') followed.add(+x); }); }catch(e){}
+  renderChips();
   applyTheme();
 })();
 </script>
