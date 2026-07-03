@@ -158,6 +158,8 @@
     h1{font-size:42px}
     .banner{max-width:960px;font-size:18px}
   }
+  .liveBadge{animation:livePulse 1.6s ease-in-out infinite}
+  @keyframes livePulse{0%,100%{opacity:1}50%{opacity:.55}}
 </style>
 </head>
 <body>
@@ -437,6 +439,10 @@
       if(follow===1) g+='<g transform="translate('+(-0.72*s).toFixed(1)+','+(-0.72*s).toFixed(1)+')"><circle r="7.2" fill="#a855f7" stroke="#fff" stroke-width="1.2"/>'+star(0,0,4.4,1.9,'#fff')+'</g>';
     }
     if(upset) g+='<g transform="translate('+(0.7*s).toFixed(1)+','+(-0.7*s).toFixed(1)+')"><circle r="6.6" fill="#e6a019" stroke="#fff" stroke-width="1.1"/><path d="M0.8 -3.6 L-2.4 0.6 L-0.3 0.6 L-1 3.6 L2.4 -0.8 L0.2 -0.8 Z" fill="#fff"/></g>';
+    if(node.round===0 && isLiveLeaf(node.team)){
+      g+='<g transform="translate(0,'+(s+9).toFixed(1)+')"><rect x="-15" y="-6.5" width="30" height="13" rx="6.5" fill="#d32f2f" class="liveBadge"/>'+
+        '<text x="0" y="0.5" text-anchor="middle" dominant-baseline="central" font-size="8" font-weight="800" fill="#fff" font-family="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif">LIVE</text></g>';
+    }
     if(clickable) g+='<circle class="flaghit" r="'+s+'" fill="#000" opacity="0" data-node="1" data-r="'+node.round+'" data-i="'+node.idx+'"/>';
     g+='</g>';
     return g;
@@ -750,7 +756,7 @@
     {a:4,b:5,hs:2,as:0,winner:4},                     // Mexico 2-0 Ecuador
     {a:6,b:7,hs:2,as:1,winner:6},                     // England 2-1 DR Congo
     {a:8,b:9,winner:null},                            // Argentina v Cape Verde — not yet played
-    {a:10,b:11,winner:null},                          // Australia v Egypt — not yet played
+    {a:10,b:11,winner:null,live:{hs:0,as:1,minute:"20'"}},  // Australia v Egypt — LIVE (Egypt lead, Salah goal 13')
     {a:12,b:13,hs:2,as:0,winner:12},                  // Switzerland 2-0 Algeria
     {a:14,b:15,winner:null},                          // Colombia v Ghana — not yet played
     {a:16,b:17,hs:2,as:3,winner:17},                  // Senegal 2-3 Belgium
@@ -766,10 +772,13 @@
   function applyRealResults(){ REAL.forEach(r=>{ if(r.winner!=null) pick(rounds[0][r.winner]); }); }
   function scoreLineFor(node){
     const p=node.parent; if(!p || p.round!==1) return null;
-    const r=REAL[p.idx]; if(!r || r.winner==null) return null;
+    const r=REAL[p.idx]; if(!r) return null;
     const an=TEAMS[r.a][0], bn=TEAMS[r.b][0];
-    return an+' '+r.hs+'–'+r.as+' '+bn+(r.note? ' · '+r.note : ' (FT)');
+    if(r.winner!=null) return an+' '+r.hs+'–'+r.as+' '+bn+(r.note? ' · '+r.note : ' (FT)');
+    if(r.live) return an+' '+r.live.hs+'–'+r.live.as+' '+bn+' · 🔴 LIVE '+r.live.minute;
+    return null;
   }
+  function isLiveLeaf(idx){ const j=Math.floor(idx/2); const r=REAL[j]; return !!(r && r.live && r.winner==null); }
   function fixtureFor(node){
     const p=node.parent; if(!p) return null;
     if(p.round===1){ const f=FIXTURES[p.idx]; return f?(f[0]+' · '+f[1]):null; }
