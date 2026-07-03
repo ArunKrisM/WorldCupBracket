@@ -171,7 +171,7 @@
       <button id="soundBtn" class="themeToggle" aria-label="Toggle sound">🔇</button>
     </div>
     <h1>World Cup 2026 Bracket</h1>
-    <div id="banner" class="banner">Loading the latest results…</div>
+    <div id="banner" class="banner" style="display:none"></div>
     <div class="toolbar">
       <button id="undoBtn" class="ghost" title="Undo your last prediction">Undo</button>
       <button id="resetBtn" class="ghost" title="Clear your predictions, keep real results">Reset</button>
@@ -629,14 +629,14 @@
     if(champ.team!=null){
       const code=TEAMS[champ.team][1], name=TEAMS[champ.team][0];
       centerLogo.classList.add('won');
+      banner.style.display='';
       banner.className='banner win';
       banner.innerHTML='★ '+name+' — World Cup 2026 Champions'+
         '<span class="quip">'+(QUIPS[code]||'Champions of the world. Let the celebrations begin.')+'</span>';
       if(champ.team!==lastChampTeam){ fireConfetti(COLORS[code]||['#e3b520','#ffffff','#0a7a3b']); winFanfare(); if(navigator.vibrate) navigator.vibrate([20,40,30,40,70]); }
     } else {
       centerLogo.classList.remove('won');
-      banner.className='banner';
-      banner.textContent=statusLine();
+      banner.style.display='none';
     }
     lastChampTeam=champ.team;
     updateOdds();
@@ -707,21 +707,6 @@
     animateFly(node, parent, ()=>{ flyingSet.delete(parent); animating=false; render(); });
   });
 
-  const TIPS=[
-    'Follow your team from the ⭐ dropdown',
-    'Predict the rest with Chalk or Chaos',
-    'Press & hold a flag for the real score, venue and odds',
-    'Have fun — tap any flag to pick who goes through'
-  ];
-  let tipIdx=0;
-  function statusLine(){
-    const decided=REAL.filter(r=>r.winner!=null).length, total=REAL.length;
-    const resultsBit=(decided>=total)
-      ? 'Round of 32 complete — Round of 16 under way.'
-      : 'Round of 32: '+decided+' of '+total+' results in.';
-    return resultsBit+' '+TIPS[tipIdx%TIPS.length];
-  }
-  setInterval(()=>{ if(champ.team==null && !animating && !simRunning){ tipIdx++; render(); } }, 5000);
   let toastTimer;
   function toast(msg){
     const el=document.getElementById('toast'); el.textContent=msg; el.classList.add('show');
