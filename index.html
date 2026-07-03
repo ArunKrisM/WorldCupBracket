@@ -810,19 +810,42 @@
   function flagDataURL(id){
     return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 60 40" width="300" height="200">'+FLAGS[id]+'</svg>');
   }
-  function loadImg(src){ return new Promise(r=>{ const i=new Image(); i.onload=()=>r(i); i.onerror=()=>r(null); i.src=src; }); }
+  function withTimeout(promise, ms, label){
+    let t;
+    const timeout=new Promise((_,rej)=>{ t=setTimeout(()=>rej(new Error((label||'operation')+' timed out')), ms); });
+    return Promise.race([promise, timeout]).finally(()=>clearTimeout(t));
+  }
+  function loadImg(src){ return withTimeout(new Promise((res,rej)=>{ const i=new Image(); i.onload=()=>res(i); i.onerror=()=>rej(new Error('img load failed')); i.src=src; }), 4000, 'emblem image load').catch(()=>null); }
   function _bgDataURI(el){
     try{ const bg=getComputedStyle(el).backgroundImage||''; const m=bg.match(/url\(["']?(data:[^"')]+)["']?\)/); return m?m[1]:null; }catch(e){ return null; }
   }
   function _loadSVGImg(svgString){
-    return new Promise((res,rej)=>{
+    return withTimeout(new Promise((res,rej)=>{
       const blob=new Blob([svgString],{type:'image/svg+xml;charset=utf-8'});
       const url=URL.createObjectURL(blob);
       const img=new Image();
       img.onload=()=>{ URL.revokeObjectURL(url); res(img); };
       img.onerror=(e)=>{ URL.revokeObjectURL(url); rej(e); };
       img.src=url;
-    });
+    }), 4000, 'bracket svg load');
+  }
+  // guaranteed-simple fallback card: pure canvas text, no image loading at all, so Share always
+  // produces an image even if the full-bracket rasterisation hangs or fails for any reason
+  function makeSimpleShareCard(){
+    const dark=document.body.classList.contains('dark');
+    const W=1080, H=1080;
+    const cv=document.createElement('canvas'); cv.width=W; cv.height=H;
+    const x=cv.getContext('2d');
+    x.fillStyle=dark?'#0b0a08':'#f4efe4'; x.fillRect(0,0,W,H);
+    const ink=dark?'#f1ead9':'#26241f', sub=dark?'#a89f8c':'#6b6456', gold='#cf9f33';
+    const FNT='-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif';
+    function lab(t,cy,size,col,w){ x.fillStyle=col; x.textAlign='center'; x.font=(w||'700')+' '+size+'px '+FNT; x.fillText(t,W/2,cy); }
+    lab('WORLD CUP 2026',150,64,ink,'800');
+    lab('BRACKET',224,64,ink,'800');
+    lab(userName?'BY '+userName.toUpperCase():'MY PREDICTIONS',280,26,gold,'700');
+    const lines=predictionSummary().split('\n');
+    lines.forEach((line,i)=>lab(line,470+i*56,34,ink,'700'));
+    return new Promise(res=>cv.toBlob(res,'image/png',0.95));
   }
   async function makeShareCard(){
     const dark=document.body.classList.contains('dark');
@@ -869,8 +892,14 @@
   }
   document.getElementById('shareBtn').addEventListener('click',async ()=>{
     const url=location.href, text=predictionSummary();
-    let blob=null; toast('Building image…');
-    try{ blob=await makeShareCard(); }catch(e){ console.error('share: makeShareCard failed',e); blob=null; }
+    toast('Building image…');
+    let blob=null;
+    try{ blob=await withTimeout(makeShareCard(), 6000, 'share card'); }
+    catch(e){ console.error('share: full bracket card failed/timed out, trying simple fallback',e); }
+    if(!blob){
+      try{ blob=await withTimeout(makeSimpleShareCard(), 3000, 'simple share card'); }
+      catch(e){ console.error('share: simple fallback also failed',e); blob=null; }
+    }
     if(blob){
       const file=new File([blob],'wc26-bracket.png',{type:'image/png'});
       if(navigator.canShare && navigator.canShare({files:[file]})){
@@ -880,11 +909,11 @@
       const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='wc26-bracket.png'; a.click();
       setTimeout(()=>URL.revokeObjectURL(a.href),4000);
       try{ await navigator.clipboard.writeText(text+'\n'+url); }catch(e){}
-      toast('Image saved \u00b7 link copied'); return;
+      toast('Image downloaded \u00b7 link copied \u2014 check your Downloads folder'); return;
     }
     if(navigator.share){ try{ await navigator.share({title:'World Cup 2026 Predictor',text,url}); return; }catch(e){} }
-    try{ await navigator.clipboard.writeText(text+'\n'+url); toast('Image failed — link copied instead'); return; }catch(e){}
-    toast('Could not build an image or copy a link — check the browser console');
+    try{ await navigator.clipboard.writeText(text+'\n'+url); toast('Image failed \u2014 link copied instead'); return; }catch(e){}
+    toast('Could not build an image or copy a link \u2014 check the browser console');
   });
   document.getElementById('undoBtn').addEventListener('click',()=>{
     if(!history.length){ toast('Nothing to undo'); return; }
