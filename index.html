@@ -856,7 +856,7 @@
     const FNT='-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif';
     function lab(t,cx,cy,size,col,w){ x.fillStyle=col; x.textAlign='center'; x.textBaseline='middle'; x.font=(w||'700')+' '+size+'px '+FNT; x.fillText(t,cx,cy); }
     lab('WORLD CUP 2026',540,74,60,ink,'800');
-    lab(userName?('BRACKET BY '+userName.toUpperCase()):'MY BRACKET PREDICTION',540,134,27,gold,'700');
+    lab(userName?(userName.toUpperCase()+"'S BRACKET"):'MY BRACKET PREDICTION',540,134,27,gold,'700');
     // rasterise the live radial bracket SVG (vector -> crisp); pad the viewBox so edge codes aren't clipped
     const svgEl=host.querySelector('svg');
     if(svgEl){
@@ -881,7 +881,7 @@
         x.restore();
       }catch(e){ console.error('share: emblem draw failed',e); }
     }
-    lab('Tap each flag to advance \u00b7 build yours',540,H-44,24,sub,'600');
+    lab('Create your own bracket \u00b7 wc26bracket.co.uk',540,H-44,24,sub,'600');
     return await new Promise(res=>cv.toBlob(res,'image/png',0.95));
   }
   document.getElementById('shareBtn').addEventListener('click',async ()=>{
