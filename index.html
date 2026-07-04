@@ -70,13 +70,6 @@
   .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
   .hint{text-align:center;font-size:11.5px;color:var(--hint);margin-top:14px}
   .flaghit{cursor:pointer;-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
-  .tip{position:absolute;left:0;top:0;transform:translate(-50%,-100%);
-    background:var(--tipbg);color:var(--tipink);font-size:12px;font-weight:600;line-height:1;
-    padding:5px 9px;border-radius:7px;white-space:nowrap;pointer-events:none;
-    opacity:0;transition:opacity .14s ease;z-index:8;box-shadow:0 2px 9px rgba(0,0,0,.2)}
-  .tip.show{opacity:1}
-  .tip::after{content:'';position:absolute;left:50%;top:100%;transform:translateX(-50%);
-    border:5px solid transparent;border-top-color:var(--tipbg)}
   footer{text-align:center;color:var(--hint);font-size:11px;margin-top:14px}
   .iconRow{position:absolute;top:0;left:0;z-index:6;display:flex;gap:8px}
   .themeToggle{position:static;
@@ -210,7 +203,7 @@
     <div id="followChips" class="chips"></div>
     <div class="resNote">⚽ Results loaded as of 4 Jul 2026 · rest of the bracket is yours to predict</div>
   </header>
-  <div class="stage"><div id="svgHost"></div><div id="centerLogo" class="centerLogo"></div><div id="tip" class="tip"></div></div>
+  <div class="stage"><div id="svgHost"></div><div id="centerLogo" class="centerLogo"></div></div>
   <footer>Tap to advance · press &amp; hold for team info · ⚡ marks an upset · final winner lifts the trophy</footer>
   <div class="credit">Original radial bracket design by <a href="https://emiliosansolini.com/about-me/" target="_blank" rel="noopener noreferrer"><b>Emilio Sansolini</b></a></div>
   <details class="howto">
@@ -598,6 +591,27 @@
   const sheet=document.getElementById('sheet'), sheetBack=document.getElementById('sheetBack');
   const RN=['Round of 32','Round of 16','Quarter-final','Semi-final','Final'];
   function closeSheet(){ sheet.classList.remove('show'); sheetBack.classList.remove('show'); }
+  // rounds tracked with real results so far, in chronological order — extend this list as later rounds get their own REAL-style arrays
+  const RESULT_ROUNDS=[ {label:'Round of 32', data:REAL}, {label:'Round of 16', data:REAL16} ];
+  function teamHistory(tm){
+    const rows=[];
+    RESULT_ROUNDS.forEach(rd=>{
+      const m=rd.data.find(r=>r.a===tm || r.b===tm); if(!m) return;
+      const oppIdx=(m.a===tm)? m.b : m.a, oppName=TEAMS[oppIdx][0];
+      let text;
+      if(m.winner!=null){
+        const us=(m.a===tm)? m.hs : m.as, them=(m.a===tm)? m.as : m.hs;
+        text=(m.winner===tm?'Won ':'Lost ')+us+'–'+them+' vs '+oppName+(m.note?' ('+m.note+')':'');
+      } else if(m.live){
+        const us=(m.a===tm)? m.live.hs : m.live.as, them=(m.a===tm)? m.live.as : m.live.hs;
+        text=us+'–'+them+' vs '+oppName+' · 🔴 LIVE '+m.live.minute;
+      } else {
+        text='vs '+oppName+' · not yet played';
+      }
+      rows.push('<div class="sRow"><span>'+rd.label+'</span><span>'+text+'</span></div>');
+    });
+    return rows.join('');
+  }
   function openInfo(node){
     if(!node || node.team==null) return;
     const tm=node.team, id=TEAMS[tm][1], name=TEAMS[tm][0], inf=INFO[id]||['—','—','—','—',1800];
@@ -615,6 +629,7 @@
       '<h2>'+name+'</h2><div class="sNick">'+((inf[0]&&inf[0]!=='—')?inf[0]+' · ':'')+inf[1]+'</div>'+
       '<div class="sRow"><span>Best World Cup</span><span>'+inf[2]+'</span></div>'+
       '<div class="sRow"><span>Tournaments played</span><span>'+inf[3]+'</span></div>'+
+      teamHistory(tm)+
       '<div class="sRow"><span>'+lab+'</span><span>'+opp+'</span></div>'+
       '<div class="sRow"><span>Match</span><span>'+(fixtureFor(node)||'TBD')+'</span></div>'+
       (scoreLineFor(node)? '<div class="sRow"><span>Result</span><span>'+scoreLineFor(node)+'</span></div>' : '')+
@@ -665,23 +680,7 @@
   }
 
   // ---------- events ----------
-  const tip=document.getElementById('tip');
-  let tipTimer;
-  function flashTip(node){
-    if(!node || node.team==null) return;
-    const scale=(host.clientWidth||W)/W;
-    tip.textContent=TEAMS[node.team][0];
-    tip.style.left=(node.x*scale)+'px';
-    tip.style.top=(node.y*scale - node.r*scale - 6)+'px';
-    tip.classList.add('show');
-    clearTimeout(tipTimer);
-    tipTimer=setTimeout(()=>tip.classList.remove('show'),1100); // brief flash
-  }
-  function hideTip(){ clearTimeout(tipTimer); tip.classList.remove('show'); }
   function nodeFrom(t){ const r=+t.getAttribute('data-r'),i=+t.getAttribute('data-i'); return (r===0)?rounds[0][i]:rounds[r][i]; }
-
-  host.addEventListener('mouseover',e=>{ const t=e.target.closest('[data-node]'); if(t) flashTip(nodeFrom(t)); });
-  host.addEventListener('mouseout', e=>{ const t=e.target.closest('[data-node]'); if(t) hideTip(); });
 
   function animateFly(child, parent, done){
     const scale=(host.clientWidth||W)/W;
@@ -714,9 +713,9 @@
     const sib=parent?((parent.a===node)?parent.b:parent.a):null;
     const before=encode();
     pick(node);
-    if(encode()===before){ render(); flashTip(node); return; }
+    if(encode()===before){ render(); return; }
     history.push(before);
-    flashTip(node); blip(680); if(navigator.vibrate) navigator.vibrate(8);
+    blip(680); if(navigator.vibrate) navigator.vibrate(8);
     if(sib && sib.team!=null && ratingOf(node.team) < ratingOf(sib.team)-40)
       toast('⚡ Upset — '+TEAMS[node.team][0]+' over '+TEAMS[sib.team][0]);
     if(reduceMotion){ render(); return; }
