@@ -444,8 +444,8 @@
     const rw=gold?2.2:1.4;
     const elim=teamStatus(node.team).out;
     let g='<g transform="translate('+node.x.toFixed(1)+','+node.y.toFixed(1)+')">';
-    g+='<g'+(elim?' opacity="0.5"':'')+'>';
     g+='<circle r="'+s+'" fill="#fff"/>';
+    g+='<g'+(elim?' opacity="0.5"':'')+'>';
     g+='<g clip-path="url(#clip'+s+')"><g transform="translate('+(-1.5*s)+','+(-s)+') scale('+(s/20)+')">'+FLAGS[id]+'</g></g>';
     g+='<circle r="'+s+'" fill="none" stroke="'+ring+'" stroke-width="'+rw+'"/>';
     g+='</g>';
