@@ -82,11 +82,13 @@ def idx_for_name(name):
 
 
 def build_entry(pair, fixtures_by_pair):
-    """Build one REAL/REAL16-style dict entry for a given (a,b) leaf-index pair."""
+    """Build one REAL/REAL16-style dict entry for a given (a,b) leaf-index pair.
+    Returns None if no fixture data was found — the caller must leave that
+    entry completely untouched in that case, never overwrite it with a guess."""
     a, b = pair
     fx = fixtures_by_pair.get(frozenset(pair))
     if fx is None:
-        return {"a": a, "b": b, "winner": None}
+        return None
 
     status = fx["fixture"]["status"]["short"]
     home_idx = idx_for_name(fx["teams"]["home"]["name"])
@@ -119,7 +121,11 @@ def build_entry(pair, fixtures_by_pair):
             entry["note"] = note
         return entry
 
-    return {"a": a, "b": b, "winner": None}
+    if status == "NS":
+        return None  # genuinely not started yet — nothing new to report, leave existing entry alone
+
+    # any other/unrecognized status: be conservative and skip rather than guess
+    return None
 
 
 def js_value(v):
@@ -138,14 +144,40 @@ def js_value(v):
     return str(v)
 
 
-def render_array(varname, entries):
-    lines = [f"  const {varname}=["]
-    for e in entries:
-        row = "{" + ",".join(f"{('as' if k=='as_' else k)}:{js_value(v)}" for k, v in e.items()) + "}"
-        lines.append(f"    {row},")
-    lines[-1] = lines[-1].rstrip(",")
-    lines.append("  ];")
-    return "\n".join(lines)
+def render_row(e):
+    return "{" + ",".join(f"{('as' if k=='as_' else k)}:{js_value(v)}" for k, v in e.items()) + "}"
+
+
+def find_entry_span(html, a, b):
+    """Locate the exact {a:X,b:Y...} object literal for this pair, handling
+    nested braces (e.g. a live:{...} sub-object) via brace counting rather
+    than a naive regex, so we only ever replace that one object — nothing
+    else on the line (trailing comma, comments) is touched."""
+    prefix = f"{{a:{a},b:{b}"
+    start = html.find(prefix)
+    if start == -1:
+        return None
+    depth = 0
+    i = start
+    while i < len(html):
+        if html[i] == "{":
+            depth += 1
+        elif html[i] == "}":
+            depth -= 1
+            if depth == 0:
+                return (start, i + 1)
+        i += 1
+    return None
+
+
+def update_entry_in_html(html, pair, entry):
+    a, b = pair
+    span = find_entry_span(html, a, b)
+    if span is None:
+        print(f"WARNING: could not locate existing entry for a={a},b={b} in index.html — leaving untouched.")
+        return html, False
+    start, end = span
+    return html[:start] + render_row(entry) + html[end:], True
 
 
 def main():
@@ -160,24 +192,23 @@ def main():
         if hi is not None and ai is not None:
             fixtures_by_pair[frozenset((hi, ai))] = fx
 
-    real_entries = [build_entry(p, fixtures_by_pair) for p in R32_PAIRS]
-    real16_entries = [build_entry(p, fixtures_by_pair) for p in R16_PAIRS]
-
     with open("index.html", "r", encoding="utf-8") as f:
         html = f.read()
 
-    new_real_block = render_array("REAL", real_entries)
-    new_real16_block = render_array("REAL16", real16_entries)
+    changed_count = 0
+    for pair in R32_PAIRS + R16_PAIRS:
+        entry = build_entry(pair, fixtures_by_pair)
+        if entry is None:
+            continue  # no fresh data for this match — leave the existing entry exactly as it is
+        html, ok = update_entry_in_html(html, pair, entry)
+        if ok:
+            changed_count += 1
 
-    html2 = re.sub(r"  const REAL=\[.*?\n  \];", new_real_block, html, count=1, flags=re.DOTALL)
-    html2 = re.sub(r"  const REAL16=\[.*?\n  \];", new_real16_block, html2, count=1, flags=re.DOTALL)
+    with open("index.html", "w", encoding="utf-8") as f:
+        f.write(html)
 
-    if html2 != html:
-        with open("index.html", "w", encoding="utf-8") as f:
-            f.write(html2)
-        print("index.html updated with latest fixture data.")
-    else:
-        print("No changes — index.html already up to date.")
+    print(f"Done. {changed_count} entr{'y' if changed_count==1 else 'ies'} updated with fresh fixture data; "
+          f"everything else left untouched.")
 
 
 if __name__ == "__main__":
