@@ -691,7 +691,7 @@
       '<div class="sNote">Odds are rating-based estimates.</div>'+
       '<div class="sBtns"><button class="ghost" id="sRoute">'+(highlightTeam===tm?'Hide route':'Show route')+'</button><button class="ghost" id="sheetClose">Close</button></div>';
     document.getElementById('sheetClose').addEventListener('click',closeSheet);
-    document.getElementById('sRoute').addEventListener('click',()=>{ highlightTeam=(highlightTeam===tm)?null:tm; render(); closeSheet(); });
+    document.getElementById('sRoute').addEventListener('click',()=>{ highlightTeam=(highlightTeam===tm)?null:tm; render(); openInfo(node); });
     sheetBack.classList.add('show'); sheet.classList.add('show');
   }
   sheetBack.addEventListener('click',closeSheet);
