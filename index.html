@@ -683,7 +683,7 @@
   function openInfo(node){
     if(!node || node.team==null) return;
     const tm=node.team, id=TEAMS[tm][1], name=TEAMS[tm][0], inf=INFO[id]||['—','—','—','—',1800];
-    const status=teamStatus(tm);
+    const status=realStatus(tm);
     const frontier=status.out?null:realFrontier(tm);
     let h2hRow='', oddsRows, spotlightRow='', matchRow='';
     if(status.out){
@@ -864,6 +864,14 @@
   function teamStatus(idx){
     let n=rounds[0][idx].parent;
     while(n){ if(n.team!=null){ if(n.team!==idx) return {out:true,atRound:n.round}; } else return {out:false}; n=n.parent; }
+    return {out:false};
+  }
+  // real (non-simulated) elimination status, for factual reporting in the info sheet
+  function realStatus(tm){
+    const r32=REAL.find(r=>r.a===tm||r.b===tm);
+    if(r32 && r32.winner!=null && r32.winner!==tm) return {out:true, atRound:1};
+    const r16=REAL16.find(r=>r.a===tm||r.b===tm);
+    if(r16 && r16.winner!=null && r16.winner!==tm) return {out:true, atRound:2};
     return {out:false};
   }
   function eliminationQuip(idx,round){
