@@ -853,7 +853,7 @@
     {a:17,b:19,winner:null},                          // Belgium v USA
     {a:21,b:23,winner:null},                          // Spain v Portugal
     {a:24,b:26,hs:3,as:0,winner:24},  // Morocco 3-0 Canada
-    {a:29,b:30,winner:null,live:{hs:0,as:0,minute:"38'"}}                           // France v Paraguay — LIVE, goalless (France dominant, 79% possession)
+    {a:29,b:30,hs:1,as:0,winner:29}                           // France 1-0 Paraguay
   ];
   function r16Locked(idx){ const j=Math.floor(idx/2); const r=REAL16[j]; return !!(r && r.winner!=null); }
   function applyRealResults16(){ REAL16.forEach(r=>{ if(r.winner!=null) pick(rounds[1][Math.floor(r.winner/2)]); }); }
