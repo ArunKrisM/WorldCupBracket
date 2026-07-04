@@ -491,11 +491,6 @@
       if(child.team!=null && P.team===child.team) return lineColorFor(TEAMS[child.team][1]);
       return '';
     }
-    function arcK(P){
-      if(champTeam!=null && P.team===champTeam) return 'g';
-      if(P.team!=null) return lineColorFor(TEAMS[P.team][1]);
-      return '';
-    }
     function walk(P){
       if(!P.a) return;
       if(P.round===5){ // finalists -> short stubs toward the centre emblem (radius clears the emblem's full height, not just its width, since it's taller than wide)
@@ -507,7 +502,9 @@
         const [ax,ay]=polar(rp,P.a.angle), [bx,by]=polar(rp,P.b.angle);
         addLine(P.a.x,P.a.y,ax,ay,segK(P,P.a));
         addLine(P.b.x,P.b.y,bx,by,segK(P,P.b));
-        addArc(rp,P.a,P.b,arcK(P));
+        const mid={angle:(P.a.angle+P.b.angle)/2};
+        addArc(rp,P.a,mid,segK(P,P.a));
+        addArc(rp,mid,P.b,segK(P,P.b));
       }
     }
     rounds[1].concat(rounds[2],rounds[3],rounds[4],[champ]).forEach(walk);
