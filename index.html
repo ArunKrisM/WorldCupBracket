@@ -447,7 +447,7 @@
     const elim=teamStatus(node.team).out;
     let g='<g transform="translate('+node.x.toFixed(1)+','+node.y.toFixed(1)+')">';
     g+='<circle r="'+s+'" fill="#fff"/>';
-    g+='<g'+(elim?' opacity="0.5"':'')+'>';
+    g+='<g'+(elim?' filter="url(#greyscale)"':'')+'>';
     g+='<g clip-path="url(#clip'+s+')"><g transform="translate('+(-1.5*s)+','+(-s)+') scale('+(s/20)+')">'+FLAGS[id]+'</g></g>';
     g+='<circle r="'+s+'" fill="none" stroke="'+ring+'" stroke-width="'+rw+'"/>';
     g+='</g>';
@@ -474,7 +474,8 @@
     TH.label=(cs.getPropertyValue('--sub').trim())||TH.label;
     let defs='<defs>';
     [22,20,19,18,17].forEach(s=>defs+='<clipPath id="clip'+s+'"><circle r="'+s+'"/></clipPath>');
-    defs+='<filter id="soft" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="6"/></filter></defs>';
+    defs+='<filter id="soft" x="-60%" y="-60%" width="220%" height="220%"><feGaussianBlur stdDeviation="6"/></filter>';
+    defs+='<filter id="greyscale"><feColorMatrix type="saturate" values="0"/></filter></defs>';
 
     // connectors — colour each settled path by the advancing team; gold for the champion's route, blue for an explicit route trace
     let base='', teamL='', goldL='';
