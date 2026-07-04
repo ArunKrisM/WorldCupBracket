@@ -494,7 +494,7 @@
     }
     function segK(P,child){
       if(champTeam!=null && P.team===champTeam && child.team===champTeam) return 'g';
-      if(child.team!=null && P.team===child.team) return lineColorFor(TEAMS[child.team][1]);
+      if(child.team!=null && P.team===child.team && !teamStatus(child.team).out) return lineColorFor(TEAMS[child.team][1]);
       return '';
     }
     function walk(P){
