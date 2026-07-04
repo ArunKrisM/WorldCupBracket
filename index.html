@@ -825,35 +825,35 @@
   };
   // real WC2026 Round-of-32 results, keyed the same as FIXTURES (leaf indices a/b, scores, winner leaf idx)
   const REAL=[
-    {a:0,b:1,winner:null},
-    {a:2,b:3,winner:null},
-    {a:4,b:5,winner:null},
-    {a:6,b:7,winner:null},
-    {a:8,b:9,winner:null},
-    {a:10,b:11,winner:null},
-    {a:12,b:13,winner:null},
-    {a:14,b:15,winner:null},
-    {a:16,b:17,winner:null},
-    {a:18,b:19,winner:null},
-    {a:20,b:21,winner:null},
-    {a:22,b:23,winner:null},
-    {a:24,b:25,winner:null},
-    {a:26,b:27,winner:null},
-    {a:28,b:29,winner:null},
-    {a:30,b:31,winner:null}
+    {a:0,b:1,hs:2,as:1,winner:0},                    // Brazil 2-1 Japan
+    {a:2,b:3,hs:1,as:2,winner:3},                     // Côte d'Ivoire 1-2 Norway
+    {a:4,b:5,hs:2,as:0,winner:4},                     // Mexico 2-0 Ecuador
+    {a:6,b:7,hs:2,as:1,winner:6},                     // England 2-1 DR Congo
+    {a:8,b:9,hs:3,as:2,winner:8},                      // Argentina 3-2 Cape Verde
+    {a:10,b:11,hs:1,as:1,winner:11,note:'Egypt win 4-2 on penalties'},  // Australia 1-1 Egypt (AET) — Egypt through on penalties
+    {a:12,b:13,hs:2,as:0,winner:12},                  // Switzerland 2-0 Algeria
+    {a:14,b:15,hs:1,as:0,winner:14},                   // Colombia 1-0 Ghana
+    {a:16,b:17,hs:2,as:3,winner:17},                  // Senegal 2-3 Belgium
+    {a:18,b:19,hs:0,as:2,winner:19},                  // Bosnia & Herz. 0-2 USA
+    {a:20,b:21,hs:0,as:3,winner:21},                  // Austria 0-3 Spain
+    {a:22,b:23,hs:1,as:2,winner:23},                  // Croatia 1-2 Portugal
+    {a:24,b:25,hs:1,as:1,winner:24,note:'Morocco win 3-2 on penalties'},   // Morocco 1-1 Netherlands (AET)
+    {a:26,b:27,hs:1,as:0,winner:26},                  // Canada 1-0 South Africa
+    {a:28,b:29,hs:0,as:3,winner:29},                  // Sweden 0-3 France
+    {a:30,b:31,hs:1,as:1,winner:30,note:'Paraguay win 4-3 on penalties'}   // Paraguay 1-1 Germany (AET)
   ];
   function leafLocked(idx){ const j=Math.floor(idx/2); const r=REAL[j]; return !!(r && r.winner!=null); }
   function applyRealResults(){ REAL.forEach(r=>{ if(r.winner!=null) pick(rounds[0][r.winner]); }); }
   // real Round-of-16 results, keyed by rounds[2] index (same order as FIXTURES16); a/b are TEAMS[] leaf indices
   const REAL16=[
-    {a:0,b:3,winner:null},
-    {a:4,b:6,winner:null},
-    {a:8,b:11,winner:null},
-    {a:12,b:14,winner:null},
-    {a:17,b:19,winner:null},
-    {a:21,b:23,winner:null},
-    {a:24,b:26,winner:null},
-    {a:29,b:30,winner:null}
+    {a:0,b:3,winner:null},                            // Brazil v Norway
+    {a:4,b:6,winner:null},                            // Mexico v England
+    {a:8,b:11,winner:null},                           // Argentina v Egypt
+    {a:12,b:14,winner:null},                          // Switzerland v Colombia
+    {a:17,b:19,winner:null},                          // Belgium v USA
+    {a:21,b:23,winner:null},                          // Spain v Portugal
+    {a:24,b:26,hs:3,as:0,winner:24},  // Morocco 3-0 Canada
+    {a:29,b:30,winner:null,live:{hs:0,as:0,minute:"38'"}}                           // France v Paraguay — LIVE, goalless (France dominant, 79% possession)
   ];
   function r16Locked(idx){ const j=Math.floor(idx/2); const r=REAL16[j]; return !!(r && r.winner!=null); }
   function applyRealResults16(){ REAL16.forEach(r=>{ if(r.winner!=null) pick(rounds[1][Math.floor(r.winner/2)]); }); }
