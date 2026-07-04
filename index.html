@@ -174,6 +174,8 @@
     .banner{max-width:960px;font-size:18px}
   }
   .liveBadge{animation:livePulse 1.6s ease-in-out infinite}
+  .liveDot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#0f9b8e;
+    vertical-align:middle;margin:0 1px 2px 0;animation:livePulse 1.6s ease-in-out infinite}
   @keyframes livePulse{0%,100%{opacity:1}50%{opacity:.55}}
 </style>
 </head>
@@ -457,7 +459,7 @@
     }
     if(upset) g+='<g transform="translate('+(0.7*s).toFixed(1)+','+(-0.7*s).toFixed(1)+')"><circle r="6.6" fill="#fff" stroke="#e6a019" stroke-width="1.3"/><path d="M0.8 -3.6 L-2.4 0.6 L-0.3 0.6 L-1 3.6 L2.4 -0.8 L0.2 -0.8 Z" fill="#e6a019"/></g>';
     if((node.round===0 && isLiveLeaf(node.team)) || isLiveR16(node)){
-      g+='<g transform="translate(0,'+(s+9).toFixed(1)+')"><rect x="-15" y="-6.5" width="30" height="13" rx="6.5" fill="#d32f2f" class="liveBadge"/>'+
+      g+='<g transform="translate(0,'+(s+9).toFixed(1)+')"><rect x="-15" y="-6.5" width="30" height="13" rx="6.5" fill="#0f9b8e" class="liveBadge"/>'+
         '<text x="0" y="0.5" text-anchor="middle" dominant-baseline="central" font-size="8" font-weight="800" fill="#fff" font-family="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif">LIVE</text></g>';
     }
     if(clickable) g+='<circle class="flaghit" r="'+s+'" fill="#000" opacity="0" data-node="1" data-r="'+node.round+'" data-i="'+node.idx+'"/>';
@@ -649,7 +651,7 @@
         text=(m.winner===tm?'Won ':'Lost ')+us+'–'+them+' vs '+oppName+(m.note?' ('+m.note+')':'');
       } else if(m.live){
         const us=(m.a===tm)? m.live.hs : m.live.as, them=(m.a===tm)? m.live.as : m.live.hs;
-        text=us+'–'+them+' vs '+oppName+' · 🔴 LIVE '+m.live.minute;
+        text=us+'–'+them+' vs '+oppName+' · <span class="liveDot"></span> LIVE '+m.live.minute;
       } else {
         text='vs '+oppName+' · not yet played';
       }
