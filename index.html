@@ -669,7 +669,18 @@
       const f=FIXTURES16[r16idx];
       return {oppIdx, oppName:TEAMS[oppIdx][0], fixtureText:f?(f[0]+' · '+f[1]+' · '+f[2]):null, decided:false};
     }
-    return {oppIdx:null, oppName:null, fixtureText:'Quarter-final · 9–11 Jul', decided:true};
+    if(r16.winner!==tm) return null; // this team lost the R16 — realStatus() handles the Eliminated case instead
+    // through to the quarter-final — find their real slot and, if the other side is also decided, the actual opponent
+    const qfSlot=Math.floor(r16idx/2);
+    const partnerIdx=(r16idx%2===0)? r16idx+1 : r16idx-1;
+    const partner=REAL16[partnerIdx];
+    const f=FIXTURES_QF[qfSlot];
+    const oppIdx=(partner && partner.winner!=null)? partner.winner : null;
+    return {
+      oppIdx, oppName: oppIdx!=null? TEAMS[oppIdx][0] : null,
+      fixtureText: f? (f[0]+' · '+f[1]+' · '+f[2]) : 'Quarter-final · 9–11 Jul',
+      decided:false
+    };
   }
   function bbcRowFor(tm){
     let status='upcoming';
@@ -823,6 +834,13 @@
     5:['Mon 6 Jul','8:00 PM BST','AT&T Stadium, Arlington, Texas'],     // Spain v Portugal
     6:['Sat 4 Jul','6:00 PM BST','NRG Stadium, Houston'],               // Morocco v Canada
     7:['Sat 4 Jul','10:00 PM BST','Lincoln Financial Field, Philadelphia'] // France v Paraguay
+  };
+  // quarter-final fixtures, keyed by rounds[3] index (pairs of REAL16 slots: QF n = REAL16 slots 2n,2n+1)
+  const FIXTURES_QF={
+    0:['Sat 11 Jul','10:00 PM BST','Hard Rock Stadium, Miami Gardens'],   // Brazil/Norway v Mexico/England
+    1:['Sun 12 Jul','2:00 AM BST','Arrowhead Stadium, Kansas City'],      // Argentina/Egypt v Switzerland/Colombia
+    2:['Fri 10 Jul','8:00 PM BST','SoFi Stadium, Inglewood'],             // Belgium/USA v Spain/Portugal
+    3:['Thu 9 Jul','9:00 PM BST','Gillette Stadium, Foxborough']          // Morocco v France
   };
   // real WC2026 Round-of-32 results, keyed the same as FIXTURES (leaf indices a/b, scores, winner leaf idx)
   const REAL=[
