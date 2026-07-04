@@ -91,7 +91,7 @@
       rgba(212,153,54,0.52) 0%, rgba(170,121,45,0.42) 9%, rgba(122,87,35,0.27) 19%,
       rgba(72,52,25,0.15) 33%, rgba(28,21,12,0.05) 50%, rgba(11,10,8,0) 66%) fixed,
     #0b0a08;}
-  .sheetBack{position:fixed;inset:0;background:rgba(0,0,0,.45);opacity:0;pointer-events:none;
+  .sheetBack{position:fixed;inset:0;background:rgba(0,0,0,.08);opacity:0;pointer-events:none;
     transition:opacity .25s;z-index:20}
   .sheetBack.show{opacity:1;pointer-events:auto}
   .sheet{position:fixed;left:50%;bottom:0;transform:translate(-50%,115%);width:min(440px,100%);
@@ -210,7 +210,7 @@
     <summary>How to play</summary>
     <ul>
       <li><b>Tap</b> a flag to send it through to the next round. Crown the final winner and the trophy lights up gold with confetti.</li>
-      <li><b>Press &amp; hold</b> any flag for its profile — nickname, best World Cup, full run so far including group stage, win chance vs its opponent, odds to reach the final and win the cup, and <b>Show route</b> to trace its path.</li>
+      <li><b>Press &amp; hold</b> any flag for its profile — nickname, best World Cup, full run so far including group stage, win chance vs its opponent, and odds to reach the final and win the cup.</li>
       <li><b>Chalk</b> auto-fills the rest by favourites · <b>Chaos</b> auto-fills it by coin flip — both animate round by round.</li>
       <li><b>⚡</b> marks an upset — an underdog beating a stronger side.</li>
       <li><b>Follow your team</b> from the dropdown to spotlight your sweepstake side (with a cheeky message if they're already out). Press &amp; hold a flag for its real venue, date, and (once played) real score.</li>
@@ -488,13 +488,11 @@
     }
     function segK(P,child){
       if(champTeam!=null && P.team===champTeam && child.team===champTeam) return 'g';
-      if(highlightTeam!=null && P.team===highlightTeam && child.team===highlightTeam) return 'h';
       if(child.team!=null && P.team===child.team) return lineColorFor(TEAMS[child.team][1]);
       return '';
     }
     function arcK(P){
       if(champTeam!=null && P.team===champTeam) return 'g';
-      if(highlightTeam!=null && P.team===highlightTeam) return 'h';
       if(P.team!=null) return lineColorFor(TEAMS[P.team][1]);
       return '';
     }
@@ -586,7 +584,7 @@
 
   const host=document.getElementById('svgHost');
   const stage=document.querySelector('.stage');
-  let flyingSet=new Set(), animating=false, simRunning=false, highlightTeam=null, followed=new Set(), userName='';
+  let flyingSet=new Set(), animating=false, simRunning=false, followed=new Set(), userName='';
   let suppressClick=false;
   const sheet=document.getElementById('sheet'), sheetBack=document.getElementById('sheetBack');
   const RN=['Round of 32','Round of 16','Quarter-final','Semi-final','Final'];
@@ -668,14 +666,23 @@
     if(p){ const sib=(p.a===node)?p.b:p.a; oppTeam=sib.team; lab=(RN[node.round]||'Next')+' opponent'; }
     const opp=(oppTeam!=null)?TEAMS[oppTeam][0]:'To be decided';
     const alreadyKnown=roundAlreadyInHistory(node);
-    let h2hRow='';
-    if(!alreadyKnown){
-      if(oppTeam!=null){
-        const pct=Math.round(100/(1+Math.pow(10,(((INFO[TEAMS[oppTeam][1]]||[])[4]||1800)-(inf[4]||1800))/400)));
-        h2hRow='<div class="sRow"><span>Chance to beat '+TEAMS[oppTeam][0]+'</span><span id="sH2H">'+pct+'%</span></div>';
-      } else {
-        h2hRow='<div class="sRow"><span>Win probability</span><span id="sH2H" style="color:var(--gold)">Pick the opponent</span></div>';
+    const status=teamStatus(tm);
+    let h2hRow='', oddsRows;
+    if(status.out){
+      oddsRows='<div class="sRow"><span>Status</span><span style="color:var(--hint)">🚫 Eliminated · '+(RN[status.atRound-1]||'the knockouts')+'</span></div>';
+    } else {
+      if(!alreadyKnown){
+        if(oppTeam!=null){
+          const pct=Math.round(100/(1+Math.pow(10,(((INFO[TEAMS[oppTeam][1]]||[])[4]||1800)-(inf[4]||1800))/400)));
+          h2hRow='<div class="sRow"><span>Chance to beat '+TEAMS[oppTeam][0]+'</span><span id="sH2H">'+pct+'%</span></div>';
+        } else {
+          h2hRow='<div class="sRow"><span>Win probability</span><span id="sH2H" style="color:var(--gold)">Pick the opponent</span></div>';
+        }
       }
+      oddsRows=h2hRow+
+        '<div class="sRow"><span>Reach the final</span><span id="sFinal">'+fmtPct(finalOdds[tm])+'</span></div>'+
+        '<div class="sRow"><span>Win the cup</span><span id="sCup">'+fmtPct(cupOdds[tm])+'</span></div>'+
+        '<div class="sNote">Odds are rating-based estimates.</div>';
     }
     sheet.innerHTML='<div class="sFlag"><svg viewBox="0 0 60 40" preserveAspectRatio="xMidYMid slice">'+FLAGS[id]+'</svg></div>'+
       '<h2>'+name+'</h2><div class="sNick">'+((inf[0]&&inf[0]!=='—')?inf[0]+' · ':'')+inf[1]+'</div>'+
@@ -685,13 +692,9 @@
       (alreadyKnown? '' : '<div class="sRow"><span>'+lab+'</span><span>'+opp+'</span></div>')+
       '<div class="sRow"><span>Match</span><span>'+(fixtureFor(node)||'TBD')+'</span></div>'+
       (alreadyKnown? '' : (scoreLineFor(node)? '<div class="sRow"><span>Result</span><span>'+scoreLineFor(node)+'</span></div>' : ''))+
-      h2hRow+
-      '<div class="sRow"><span>Reach the final</span><span id="sFinal">'+fmtPct(finalOdds[tm])+'</span></div>'+
-      '<div class="sRow"><span>Win the cup</span><span id="sCup">'+fmtPct(cupOdds[tm])+'</span></div>'+
-      '<div class="sNote">Odds are rating-based estimates.</div>'+
-      '<div class="sBtns"><button class="ghost" id="sRoute">'+(highlightTeam===tm?'Hide route':'Show route')+'</button><button class="ghost" id="sheetClose">Close</button></div>';
+      oddsRows+
+      '<div class="sBtns"><button class="ghost" id="sheetClose">Close</button></div>';
     document.getElementById('sheetClose').addEventListener('click',closeSheet);
-    document.getElementById('sRoute').addEventListener('click',()=>{ highlightTeam=(highlightTeam===tm)?null:tm; render(); openInfo(node); });
     sheetBack.classList.add('show'); sheet.classList.add('show');
   }
   sheetBack.addEventListener('click',closeSheet);
@@ -1005,11 +1008,11 @@
   });
   document.getElementById('undoBtn').addEventListener('click',()=>{
     if(!history.length){ toast('Nothing to undo'); return; }
-    applyCode(history.pop()); highlightTeam=null; render(); toast('Undid last pick');
+    applyCode(history.pop()); render(); toast('Undid last pick');
   });
   document.getElementById('resetBtn').addEventListener('click',()=>{
     history.push(encode());
-    reset(); applyRealResults(); applyRealResults16(); highlightTeam=null; render(); toast('Predictions reset — real results kept');
+    reset(); applyRealResults(); applyRealResults16(); render(); toast('Predictions reset — real results kept');
   });
 
   // theme
@@ -1058,7 +1061,7 @@
   async function simulate(mode){
     if(simRunning||animating) return;
     simRunning=true; history.push(encode());
-    reset(); applyRealResults(); applyRealResults16(); highlightTeam=null; render(); await delay(120);
+    reset(); applyRealResults(); applyRealResults16(); render(); await delay(120);
     for(let r=1;r<=5;r++){
       const nodes=(r<5)?rounds[r]:[champ];
       const active=(r===1)? nodes.filter(n=> !(REAL[n.idx] && REAL[n.idx].winner!=null))
