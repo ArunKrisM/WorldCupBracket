@@ -629,11 +629,6 @@
   };
   // is this team's own current-round match already reflected in teamHistory (decided or live)?
   // if so, skip the separate opponent/result spotlight for that round to avoid repeating it.
-  function roundAlreadyInHistory(node){
-    if(node.round===0 && node.parent){ const r=REAL[node.parent.idx]; return !!(r && (r.winner!=null || r.live)); }
-    if(node.round===1){ const r=REAL16[Math.floor(node.idx/2)]; return !!(r && (r.winner!=null || r.live)); }
-    return false;
-  }
   function teamHistory(tm){
     const id=TEAMS[tm][1];
     const rows=[];
@@ -661,12 +656,25 @@
     });
     return rows.join('');
   }
-  function bbcRowFor(node){
-    const p=node.parent; let status='upcoming';
-    if(p){
-      if(p.round===1){ const r=REAL[p.idx]; if(r){ if(r.winner!=null) status='finished'; else if(r.live) status='live'; } }
-      else if(p.round===2){ const r=REAL16[p.idx]; if(r){ if(r.winner!=null) status='finished'; else if(r.live) status='live'; } }
+  // this team's genuine next real-world match, based ONLY on REAL/REAL16 data — completely
+  // independent of how far the user has advanced them via their own picks/simulation.
+  // returns null once past the rounds we track match-by-match (falls back to a generic notice).
+  function realFrontier(tm){
+    const r16idx=REAL16.findIndex(r=>r.a===tm||r.b===tm);
+    if(r16idx<0) return null;
+    const r16=REAL16[r16idx];
+    if(r16.winner==null && !r16.live){
+      const oppIdx=(r16.a===tm)?r16.b:r16.a;
+      const f=FIXTURES16[r16idx];
+      return {oppIdx, oppName:TEAMS[oppIdx][0], fixtureText:f?(f[0]+' · '+f[1]+' · '+f[2]):null, decided:false};
     }
+    return {oppIdx:null, oppName:null, fixtureText:'Quarter-final · 9–11 Jul', decided:true};
+  }
+  function bbcRowFor(tm){
+    let status='upcoming';
+    const r16=REAL16.find(r=>r.a===tm||r.b===tm);
+    if(r16){ if(r16.winner!=null) status='finished'; else if(r16.live) status='live'; }
+    else { const r32=REAL.find(r=>r.a===tm||r.b===tm); if(r32){ if(r32.winner!=null) status='finished'; else if(r32.live) status='live'; } }
     const label = status==='live' ? '📺 Follow live on BBC'
       : status==='finished' ? '📺 Catch up via BBC'
       : '📺 BBC coverage & kick-off times';
@@ -675,22 +683,19 @@
   function openInfo(node){
     if(!node || node.team==null) return;
     const tm=node.team, id=TEAMS[tm][1], name=TEAMS[tm][0], inf=INFO[id]||['—','—','—','—',1800];
-    const p=node.parent; let oppTeam=null, lab='First-round opponent';
-    if(p){ const sib=(p.a===node)?p.b:p.a; oppTeam=sib.team; lab=(RN[node.round]||'Next')+' opponent'; }
-    const opp=(oppTeam!=null)?TEAMS[oppTeam][0]:'To be decided';
-    const alreadyKnown=roundAlreadyInHistory(node);
     const status=teamStatus(tm);
-    let h2hRow='', oddsRows;
+    const frontier=status.out?null:realFrontier(tm);
+    let h2hRow='', oddsRows, spotlightRow='', matchRow='';
     if(status.out){
       oddsRows='<div class="sRow"><span>Status</span><span style="color:var(--hint)">🚫 Eliminated · '+(RN[status.atRound-1]||'the knockouts')+'</span></div>';
     } else {
-      if(!alreadyKnown){
-        if(oppTeam!=null){
-          const pct=Math.round(100/(1+Math.pow(10,(((INFO[TEAMS[oppTeam][1]]||[])[4]||1800)-(inf[4]||1800))/400)));
-          h2hRow='<div class="sRow"><span>Chance to beat '+TEAMS[oppTeam][0]+'</span><span id="sH2H">'+pct+'%</span></div>';
-        } else {
-          h2hRow='<div class="sRow"><span>Win probability</span><span id="sH2H" style="color:var(--gold)">Pick the opponent</span></div>';
+      if(frontier){
+        if(frontier.oppIdx!=null){
+          spotlightRow='<div class="sRow"><span>Next opponent</span><span>'+frontier.oppName+'</span></div>';
+          const pct=Math.round(100/(1+Math.pow(10,(((INFO[TEAMS[frontier.oppIdx][1]]||[])[4]||1800)-(inf[4]||1800))/400)));
+          h2hRow='<div class="sRow"><span>Chance to beat '+frontier.oppName+'</span><span id="sH2H">'+pct+'%</span></div>';
         }
+        if(frontier.fixtureText) matchRow='<div class="sRow"><span>Match</span><span>'+frontier.fixtureText+'</span></div>';
       }
       oddsRows=h2hRow+
         '<div class="sRow"><span>Reach the final</span><span id="sFinal">'+fmtPct(finalOdds[tm])+'</span></div>'+
@@ -702,10 +707,9 @@
       '<div class="sRow"><span>Best World Cup</span><span>'+inf[2]+'</span></div>'+
       '<div class="sRow"><span>Tournaments played</span><span>'+inf[3]+'</span></div>'+
       teamHistory(tm)+
-      (alreadyKnown? '' : '<div class="sRow"><span>'+lab+'</span><span>'+opp+'</span></div>')+
-      '<div class="sRow"><span>Match</span><span>'+(fixtureFor(node)||'TBD')+'</span></div>'+
-      bbcRowFor(node)+
-      (alreadyKnown? '' : (scoreLineFor(node)? '<div class="sRow"><span>Result</span><span>'+scoreLineFor(node)+'</span></div>' : ''))+
+      spotlightRow+
+      matchRow+
+      bbcRowFor(tm)+
       oddsRows+
       '<div class="sBtns"><button class="ghost" id="sheetClose">Close</button></div>';
     document.getElementById('sheetClose').addEventListener('click',closeSheet);
@@ -855,35 +859,8 @@
   ];
   function r16Locked(idx){ const j=Math.floor(idx/2); const r=REAL16[j]; return !!(r && r.winner!=null); }
   function applyRealResults16(){ REAL16.forEach(r=>{ if(r.winner!=null) pick(rounds[1][Math.floor(r.winner/2)]); }); }
-  function scoreLineFor(node){
-    const p=node.parent; if(!p) return null;
-    if(p.round===1){
-      const r=REAL[p.idx]; if(!r) return null;
-      const an=TEAMS[r.a][0], bn=TEAMS[r.b][0];
-      if(r.winner!=null) return an+' '+r.hs+'–'+r.as+' '+bn+(r.note? ' · '+r.note : ' (FT)');
-      if(r.live) return an+' '+r.live.hs+'–'+r.live.as+' '+bn+' · 🔴 LIVE '+r.live.minute;
-      return null;
-    }
-    if(p.round===2){
-      const r=REAL16[p.idx]; if(!r) return null;
-      const an=TEAMS[r.a][0], bn=TEAMS[r.b][0];
-      if(r.winner!=null) return an+' '+r.hs+'–'+r.as+' '+bn+(r.note? ' · '+r.note : ' (FT)');
-      if(r.live) return an+' '+r.live.hs+'–'+r.live.as+' '+bn+' · 🔴 LIVE '+r.live.minute;
-      return null;
-    }
-    return null;
-  }
   function isLiveLeaf(idx){ const j=Math.floor(idx/2); const r=REAL[j]; return !!(r && r.live && r.winner==null); }
   function isLiveR16(node){ if(node.round!==1 || node.team==null) return false; const j=Math.floor(node.idx/2); const r=REAL16[j]; return !!(r && r.live && r.winner==null); }
-  function fixtureFor(node){
-    const p=node.parent; if(!p) return null;
-    if(p.round===1){ const f=FIXTURES[p.idx]; return f?(f[0]+' · '+f[1]):null; }
-    if(p.round===2){ const f=FIXTURES16[p.idx]; return f?(f[0]+' · '+f[1]+' · '+f[2]):'Round of 16 · 4–7 Jul'; }
-    if(p.round===3) return 'Quarter-final · 9–11 Jul';
-    if(p.round===4) return 'Semi-final · 14–15 Jul';
-    if(p.round===5) return 'Final · Sun 19 Jul · MetLife Stadium, New Jersey';
-    return null;
-  }
   function teamStatus(idx){
     let n=rounds[0][idx].parent;
     while(n){ if(n.team!=null){ if(n.team!==idx) return {out:true,atRound:n.round}; } else return {out:false}; n=n.parent; }
