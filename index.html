@@ -685,13 +685,12 @@
     const tm=node.team, id=TEAMS[tm][1], name=TEAMS[tm][0], inf=INFO[id]||['—','—','—','—',1800];
     const status=realStatus(tm);
     const frontier=status.out?null:realFrontier(tm);
-    let h2hRow='', oddsRows, spotlightRow='', matchRow='';
+    let h2hRow='', oddsRows, matchRow='';
     if(status.out){
       oddsRows='<div class="sRow"><span>Status</span><span style="color:var(--hint)">🚫 Eliminated · '+(RN[status.atRound-1]||'the knockouts')+'</span></div>';
     } else {
       if(frontier){
         if(frontier.oppIdx!=null){
-          spotlightRow='<div class="sRow"><span>Next opponent</span><span>'+frontier.oppName+'</span></div>';
           const pct=Math.round(100/(1+Math.pow(10,(((INFO[TEAMS[frontier.oppIdx][1]]||[])[4]||1800)-(inf[4]||1800))/400)));
           h2hRow='<div class="sRow"><span>Chance to beat '+frontier.oppName+'</span><span id="sH2H">'+pct+'%</span></div>';
         }
@@ -707,7 +706,6 @@
       '<div class="sRow"><span>Best World Cup</span><span>'+inf[2]+'</span></div>'+
       '<div class="sRow"><span>Tournaments played</span><span>'+inf[3]+'</span></div>'+
       teamHistory(tm)+
-      spotlightRow+
       matchRow+
       bbcRowFor(tm)+
       oddsRows+
