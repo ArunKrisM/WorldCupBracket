@@ -210,7 +210,7 @@
     <summary>How to play</summary>
     <ul>
       <li><b>Tap</b> a flag to send it through to the next round. Crown the final winner and the trophy lights up gold with confetti.</li>
-      <li><b>Press &amp; hold</b> any flag for its profile — nickname, best World Cup, win chance vs its opponent, odds to reach the final and win the cup, and <b>Show route</b> to trace its path on the bracket and reveal its full run so far, including group stage.</li>
+      <li><b>Press &amp; hold</b> any flag for its profile — nickname, best World Cup, full run so far including group stage, win chance vs its opponent, odds to reach the final and win the cup, and <b>Show route</b> to trace its path.</li>
       <li><b>Chalk</b> auto-fills the rest by favourites · <b>Chaos</b> auto-fills it by coin flip — both animate round by round.</li>
       <li><b>⚡</b> marks an upset — an underdog beating a stronger side.</li>
       <li><b>Follow your team</b> from the dropdown to spotlight your sweepstake side (with a cheeky message if they're already out). Press &amp; hold a flag for its real venue, date, and (once played) real score.</li>
@@ -627,10 +627,17 @@
     PAR:[['USA',1,4],['Turkiye',1,0],['Australia',0,0]],
     GER:[['Curacao',7,1],['Ivory Coast',2,1],['Ecuador',1,2]]
   };
-  function teamHistory(tm, showGroups){
+  // is this team's own current-round match already reflected in teamHistory (decided or live)?
+  // if so, skip the separate opponent/result spotlight for that round to avoid repeating it.
+  function roundAlreadyInHistory(node){
+    if(node.round===0 && node.parent){ const r=REAL[node.parent.idx]; return !!(r && (r.winner!=null || r.live)); }
+    if(node.round===1){ const r=REAL16[node.idx]; return !!(r && (r.winner!=null || r.live)); }
+    return false;
+  }
+  function teamHistory(tm){
     const id=TEAMS[tm][1];
     const rows=[];
-    if(showGroups && GROUPS[id]){
+    if(GROUPS[id]){
       GROUPS[id].forEach(([opp,us,them])=>{
         const res=(us>them?'Won ':us<them?'Lost ':'Drew ');
         rows.push('<div class="sRow"><span>Group stage</span><span>'+res+us+'–'+them+' vs '+opp+'</span></div>');
@@ -654,44 +661,37 @@
     });
     return rows.join('');
   }
-  let sheetExpanded=false, currentInfoNode=null;
-  function renderSheetContent(){
-    const node=currentInfoNode; if(!node) return;
+  function openInfo(node){
+    if(!node || node.team==null) return;
     const tm=node.team, id=TEAMS[tm][1], name=TEAMS[tm][0], inf=INFO[id]||['—','—','—','—',1800];
     const p=node.parent; let oppTeam=null, lab='First-round opponent';
     if(p){ const sib=(p.a===node)?p.b:p.a; oppTeam=sib.team; lab=(RN[node.round]||'Next')+' opponent'; }
     const opp=(oppTeam!=null)?TEAMS[oppTeam][0]:'To be decided';
-    let h2hRow;
-    if(oppTeam!=null){
-      const pct=Math.round(100/(1+Math.pow(10,(((INFO[TEAMS[oppTeam][1]]||[])[4]||1800)-(inf[4]||1800))/400)));
-      h2hRow='<div class="sRow"><span>Chance to beat '+TEAMS[oppTeam][0]+'</span><span id="sH2H">'+pct+'%</span></div>';
-    } else {
-      h2hRow='<div class="sRow"><span>Win probability</span><span id="sH2H" style="color:var(--gold)">Pick the opponent</span></div>';
+    const alreadyKnown=roundAlreadyInHistory(node);
+    let h2hRow='';
+    if(!alreadyKnown){
+      if(oppTeam!=null){
+        const pct=Math.round(100/(1+Math.pow(10,(((INFO[TEAMS[oppTeam][1]]||[])[4]||1800)-(inf[4]||1800))/400)));
+        h2hRow='<div class="sRow"><span>Chance to beat '+TEAMS[oppTeam][0]+'</span><span id="sH2H">'+pct+'%</span></div>';
+      } else {
+        h2hRow='<div class="sRow"><span>Win probability</span><span id="sH2H" style="color:var(--gold)">Pick the opponent</span></div>';
+      }
     }
     sheet.innerHTML='<div class="sFlag"><svg viewBox="0 0 60 40" preserveAspectRatio="xMidYMid slice">'+FLAGS[id]+'</svg></div>'+
       '<h2>'+name+'</h2><div class="sNick">'+((inf[0]&&inf[0]!=='—')?inf[0]+' · ':'')+inf[1]+'</div>'+
       '<div class="sRow"><span>Best World Cup</span><span>'+inf[2]+'</span></div>'+
       '<div class="sRow"><span>Tournaments played</span><span>'+inf[3]+'</span></div>'+
-      teamHistory(tm, sheetExpanded)+
-      '<div class="sRow"><span>'+lab+'</span><span>'+opp+'</span></div>'+
+      teamHistory(tm)+
+      (alreadyKnown? '' : '<div class="sRow"><span>'+lab+'</span><span>'+opp+'</span></div>')+
       '<div class="sRow"><span>Match</span><span>'+(fixtureFor(node)||'TBD')+'</span></div>'+
-      (scoreLineFor(node)? '<div class="sRow"><span>Result</span><span>'+scoreLineFor(node)+'</span></div>' : '')+
+      (alreadyKnown? '' : (scoreLineFor(node)? '<div class="sRow"><span>Result</span><span>'+scoreLineFor(node)+'</span></div>' : ''))+
       h2hRow+
       '<div class="sRow"><span>Reach the final</span><span id="sFinal">'+fmtPct(finalOdds[tm])+'</span></div>'+
       '<div class="sRow"><span>Win the cup</span><span id="sCup">'+fmtPct(cupOdds[tm])+'</span></div>'+
       '<div class="sNote">Odds are rating-based estimates.</div>'+
-      '<div class="sBtns"><button class="ghost" id="sRoute">'+(sheetExpanded?'Hide full history':'Show route \u0026 full history')+'</button><button class="ghost" id="sheetClose">Close</button></div>';
+      '<div class="sBtns"><button class="ghost" id="sRoute">'+(highlightTeam===tm?'Hide route':'Show route')+'</button><button class="ghost" id="sheetClose">Close</button></div>';
     document.getElementById('sheetClose').addEventListener('click',closeSheet);
-    document.getElementById('sRoute').addEventListener('click',()=>{
-      highlightTeam=(highlightTeam===tm)?null:tm;
-      sheetExpanded=!sheetExpanded;
-      render(); renderSheetContent();
-    });
-  }
-  function openInfo(node){
-    if(!node || node.team==null) return;
-    currentInfoNode=node; sheetExpanded=false;
-    renderSheetContent();
+    document.getElementById('sRoute').addEventListener('click',()=>{ highlightTeam=(highlightTeam===tm)?null:tm; render(); closeSheet(); });
     sheetBack.classList.add('show'); sheet.classList.add('show');
   }
   sheetBack.addEventListener('click',closeSheet);
@@ -833,7 +833,7 @@
     {a:12,b:14,winner:null},                          // Switzerland v Colombia
     {a:17,b:19,winner:null},                          // Belgium v USA
     {a:21,b:23,winner:null},                          // Spain v Portugal
-    {a:24,b:26,winner:null,live:{hs:2,as:0,minute:"90+"}},  // Morocco v Canada — LIVE, Morocco lead 2-0 (goals 50', 82'), into stoppage time
+    {a:24,b:26,hs:3,as:0,winner:24},  // Morocco 3-0 Canada
     {a:29,b:30,winner:null}                           // France v Paraguay
   ];
   function r16Locked(idx){ const j=Math.floor(idx/2); const r=REAL16[j]; return !!(r && r.winner!=null); }
