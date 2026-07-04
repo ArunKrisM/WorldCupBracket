@@ -592,8 +592,8 @@
   const RN=['Round of 32','Round of 16','Quarter-final','Semi-final','Final'];
   function closeSheet(){ sheet.classList.remove('show'); sheetBack.classList.remove('show'); }
   // rounds tracked with real results so far, in chronological order — extend this list as later rounds get their own REAL-style arrays
-  const RESULT_ROUNDS=[ {label:'Round of 32', data:REAL}, {label:'Round of 16', data:REAL16} ];
   function teamHistory(tm){
+    const RESULT_ROUNDS=[ {label:'Round of 32', data:REAL}, {label:'Round of 16', data:REAL16} ];
     const rows=[];
     RESULT_ROUNDS.forEach(rd=>{
       const m=rd.data.find(r=>r.a===tm || r.b===tm); if(!m) return;
