@@ -629,7 +629,7 @@
   // if so, skip the separate opponent/result spotlight for that round to avoid repeating it.
   function roundAlreadyInHistory(node){
     if(node.round===0 && node.parent){ const r=REAL[node.parent.idx]; return !!(r && (r.winner!=null || r.live)); }
-    if(node.round===1){ const r=REAL16[node.idx]; return !!(r && (r.winner!=null || r.live)); }
+    if(node.round===1){ const r=REAL16[Math.floor(node.idx/2)]; return !!(r && (r.winner!=null || r.live)); }
     return false;
   }
   function teamHistory(tm){
