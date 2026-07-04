@@ -442,10 +442,13 @@
     const s=node.r, id=TEAMS[node.team][1];
     const ring=gold?'#cf9f33':TH.ring;
     const rw=gold?2.2:1.4;
+    const elim=teamStatus(node.team).out;
     let g='<g transform="translate('+node.x.toFixed(1)+','+node.y.toFixed(1)+')">';
+    g+='<g'+(elim?' opacity="0.5"':'')+'>';
     g+='<circle r="'+s+'" fill="#fff"/>';
     g+='<g clip-path="url(#clip'+s+')"><g transform="translate('+(-1.5*s)+','+(-s)+') scale('+(s/20)+')">'+FLAGS[id]+'</g></g>';
     g+='<circle r="'+s+'" fill="none" stroke="'+ring+'" stroke-width="'+rw+'"/>';
+    g+='</g>';
     if(follow){
       g+='<circle r="'+(s+3.2).toFixed(1)+'" fill="none" stroke="'+(follow===2?'#9aa0a6':'#a855f7')+'" stroke-width="2.6"'+(follow===2?' stroke-dasharray="3 3"':'')+'/>';
       if(follow===1) g+='<g transform="translate('+(-0.72*s).toFixed(1)+','+(-0.72*s).toFixed(1)+')"><circle r="7.2" fill="#a855f7" stroke="#fff" stroke-width="1.2"/>'+star(0,0,4.4,1.9,'#fff')+'</g>';
