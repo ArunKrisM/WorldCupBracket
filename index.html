@@ -458,7 +458,7 @@
       if(follow===1) g+='<g transform="translate('+(-0.72*s).toFixed(1)+','+(-0.72*s).toFixed(1)+')"><circle r="7.2" fill="#a855f7" stroke="#fff" stroke-width="1.2"/>'+star(0,0,4.4,1.9,'#fff')+'</g>';
     }
     if(upset) g+='<g transform="translate('+(0.7*s).toFixed(1)+','+(-0.7*s).toFixed(1)+')"><circle r="6.6" fill="#e6a019" stroke="#fff" stroke-width="1.1"/><path d="M0.8 -3.6 L-2.4 0.6 L-0.3 0.6 L-1 3.6 L2.4 -0.8 L0.2 -0.8 Z" fill="#fff"/></g>';
-    if(node.round===0 && isLiveLeaf(node.team)){
+    if((node.round===0 && isLiveLeaf(node.team)) || isLiveR16(node)){
       g+='<g transform="translate(0,'+(s+9).toFixed(1)+')"><rect x="-15" y="-6.5" width="30" height="13" rx="6.5" fill="#d32f2f" class="liveBadge"/>'+
         '<text x="0" y="0.5" text-anchor="middle" dominant-baseline="central" font-size="8" font-weight="800" fill="#fff" font-family="-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif">LIVE</text></g>';
     }
@@ -709,6 +709,7 @@
     const t=e.target.closest('[data-node]'); if(!t) return;
     const node=nodeFrom(t);
     if(node.round===0 && leafLocked(node.idx)){ toast('That result is already in — locked to the real score'); return; }
+    if(node.round===1 && r16Locked(node.idx)){ toast('That result is already in — locked to the real score'); return; }
     const parent=node.parent;
     const sib=parent?((parent.a===node)?parent.b:parent.a):null;
     const before=encode();
@@ -773,15 +774,39 @@
   ];
   function leafLocked(idx){ const j=Math.floor(idx/2); const r=REAL[j]; return !!(r && r.winner!=null); }
   function applyRealResults(){ REAL.forEach(r=>{ if(r.winner!=null) pick(rounds[0][r.winner]); }); }
+  // real Round-of-16 results, keyed by rounds[2] index (same order as FIXTURES16); a/b are TEAMS[] leaf indices
+  const REAL16=[
+    {a:0,b:3,winner:null},                            // Brazil v Norway
+    {a:4,b:6,winner:null},                            // Mexico v England
+    {a:8,b:11,winner:null},                           // Argentina v Egypt
+    {a:12,b:14,winner:null},                          // Switzerland v Colombia
+    {a:17,b:19,winner:null},                          // Belgium v USA
+    {a:21,b:23,winner:null},                          // Spain v Portugal
+    {a:24,b:26,winner:null,live:{hs:0,as:0,minute:"53'"}},  // Morocco v Canada — LIVE, goalless, feisty (6 yellow cards)
+    {a:29,b:30,winner:null}                           // France v Paraguay
+  ];
+  function r16Locked(idx){ const j=Math.floor(idx/2); const r=REAL16[j]; return !!(r && r.winner!=null); }
+  function applyRealResults16(){ REAL16.forEach(r=>{ if(r.winner!=null) pick(rounds[1][Math.floor(r.winner/2)]); }); }
   function scoreLineFor(node){
-    const p=node.parent; if(!p || p.round!==1) return null;
-    const r=REAL[p.idx]; if(!r) return null;
-    const an=TEAMS[r.a][0], bn=TEAMS[r.b][0];
-    if(r.winner!=null) return an+' '+r.hs+'–'+r.as+' '+bn+(r.note? ' · '+r.note : ' (FT)');
-    if(r.live) return an+' '+r.live.hs+'–'+r.live.as+' '+bn+' · 🔴 LIVE '+r.live.minute;
+    const p=node.parent; if(!p) return null;
+    if(p.round===1){
+      const r=REAL[p.idx]; if(!r) return null;
+      const an=TEAMS[r.a][0], bn=TEAMS[r.b][0];
+      if(r.winner!=null) return an+' '+r.hs+'–'+r.as+' '+bn+(r.note? ' · '+r.note : ' (FT)');
+      if(r.live) return an+' '+r.live.hs+'–'+r.live.as+' '+bn+' · 🔴 LIVE '+r.live.minute;
+      return null;
+    }
+    if(p.round===2){
+      const r=REAL16[p.idx]; if(!r) return null;
+      const an=TEAMS[r.a][0], bn=TEAMS[r.b][0];
+      if(r.winner!=null) return an+' '+r.hs+'–'+r.as+' '+bn+(r.note? ' · '+r.note : ' (FT)');
+      if(r.live) return an+' '+r.live.hs+'–'+r.live.as+' '+bn+' · 🔴 LIVE '+r.live.minute;
+      return null;
+    }
     return null;
   }
   function isLiveLeaf(idx){ const j=Math.floor(idx/2); const r=REAL[j]; return !!(r && r.live && r.winner==null); }
+  function isLiveR16(node){ if(node.round!==1 || node.team==null) return false; const j=Math.floor(node.idx/2); const r=REAL16[j]; return !!(r && r.live && r.winner==null); }
   function fixtureFor(node){
     const p=node.parent; if(!p) return null;
     if(p.round===1){ const f=FIXTURES[p.idx]; return f?(f[0]+' · '+f[1]):null; }
@@ -933,7 +958,7 @@
   });
   document.getElementById('resetBtn').addEventListener('click',()=>{
     history.push(encode());
-    reset(); applyRealResults(); highlightTeam=null; render(); toast('Predictions reset — real results kept');
+    reset(); applyRealResults(); applyRealResults16(); highlightTeam=null; render(); toast('Predictions reset — real results kept');
   });
 
   // theme
@@ -982,10 +1007,11 @@
   async function simulate(mode){
     if(simRunning||animating) return;
     simRunning=true; history.push(encode());
-    reset(); applyRealResults(); highlightTeam=null; render(); await delay(120);
+    reset(); applyRealResults(); applyRealResults16(); highlightTeam=null; render(); await delay(120);
     for(let r=1;r<=5;r++){
       const nodes=(r<5)?rounds[r]:[champ];
-      const active=(r===1)? nodes.filter(n=> !(REAL[n.idx] && REAL[n.idx].winner!=null)) : nodes;
+      const active=(r===1)? nodes.filter(n=> !(REAL[n.idx] && REAL[n.idx].winner!=null))
+        : (r===2)? nodes.filter(n=> !(REAL16[n.idx] && REAL16[n.idx].winner!=null)) : nodes;
       const moves=active.map(n=>{ const w=pickWinner(n.a.team,n.b.team,mode); return {n:n, w:w, from:(w===n.a.team?n.a:n.b)}; });
       moves.forEach(m=>flyingSet.add(m.n)); render();
       if(!reduceMotion) await Promise.all(moves.map(m=>animateFlyP(m.from,m.n)));
@@ -1026,7 +1052,7 @@
       const { data:row }=await sb.from('players').select('*').eq('id', sbUser.id).maybeSingle();
       if(row){
         if(row.name){ userName=row.name; const ni=document.getElementById('nameInput'); if(ni) ni.value=userName; try{localStorage.setItem('wc26-name',userName);}catch(e){} }
-        if(row.bracket){ applyCode(row.bracket); applyRealResults(); }
+        if(row.bracket){ applyCode(row.bracket); applyRealResults(); applyRealResults16(); }
         if(row.followed && row.followed.length){ followed=new Set(row.followed); try{localStorage.setItem('wc26-follow',[...followed].join(','));}catch(e){} }
       } else {
         await cloudSave(true);
@@ -1051,6 +1077,7 @@
   if(_h){ applyCode(_h); }
   else { try{ const s=localStorage.getItem('wc26-bracket'); if(s) applyCode(s); }catch(e){} }
   applyRealResults();
+  applyRealResults16();
   cloudInit();
   try{ userName=localStorage.getItem('wc26-name')||''; }catch(e){}
   const nameInput=document.getElementById('nameInput');
