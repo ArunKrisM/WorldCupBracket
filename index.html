@@ -190,8 +190,7 @@
       <select id="followSel" class="fSel"><option value="">⭐ Follow a team…</option></select>
     </div>
     <div id="followChips" class="chips"></div>
-    <div id="odds" class="odds"></div>
-    <div class="resNote">⚽ Round of 32 complete as of 4 Jul 2026 · Round of 16 is yours to predict</div>
+    <div class="resNote">⚽ Results loaded as of 4 Jul 2026 · rest of the bracket is yours to predict</div>
   </header>
   <div class="stage"><div id="svgHost"></div><div id="centerLogo" class="centerLogo"></div><div id="tip" class="tip"></div></div>
   <footer>Tap to advance · press &amp; hold for team info · ⚡ marks an upset · final winner lifts the trophy</footer>
@@ -641,7 +640,6 @@
       banner.style.display='none';
     }
     lastChampTeam=champ.team;
-    updateOdds();
     try{ history.replaceState(null,'','#'+encode()); }catch(e){}
     try{ localStorage.setItem('wc26-bracket',encode()); }catch(e){}
     cloudSave();
@@ -954,23 +952,6 @@
     for(const t in h1) finalOdds[t]=h1[t];
     for(const a in h0){ for(const b in h1){ const pa=h0[a]*h1[b], q=pWin(+a,+b);
       cupOdds[a]=(cupOdds[a]||0)+pa*q; cupOdds[b]=(cupOdds[b]||0)+pa*(1-q); } }
-  }
-  function bracketLikelihood(){
-    let p=1, any=false;
-    rounds[1].concat(rounds[2],rounds[3],rounds[4],[champ]).forEach(n=>{
-      if(n.team!=null && n.a.team!=null && n.b.team!=null){
-        const loser=(n.a.team===n.team)?n.b.team:n.a.team;
-        p*=pWin(n.team,loser); any=true;
-      }
-    });
-    return any?p:null;
-  }
-  function updateOdds(){
-    const el=document.getElementById('odds'); if(!el) return;
-    const p=bracketLikelihood();
-    if(p==null){ el.innerHTML=''; return; }
-    const inv=Math.max(1,Math.round(1/p));
-    el.innerHTML='Bracket likelihood <b>'+fmtPct(p)+'</b> · about <b>1 in '+inv.toLocaleString()+'</b>';
   }
   function delay(ms){ return new Promise(r=>setTimeout(r,ms)); }
   function animateFlyP(child,parent){ return new Promise(res=>animateFly(child,parent,res)); }
