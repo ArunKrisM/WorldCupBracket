@@ -632,6 +632,16 @@
   };
   // is this team's own current-round match already reflected in teamHistory (decided or live)?
   // if so, skip the separate opponent/result spotlight for that round to avoid repeating it.
+  // per-match BBC links, keyed 'ROUND-idx' (idx = position in REAL/REAL16/etc). Add entries here as
+  // real URLs come in — type is 'live' (BBC Live text page), 'iplayer' (video), or 'sounds' (radio).
+  const BBC_LINKS={
+    // 'R32-0': {url:'https://www.bbc.co.uk/...', type:'iplayer'},
+  };
+  const BBC_LABEL={live:'📰 BBC Live', iplayer:'📺 iPlayer', sounds:'🎙️ Sounds'};
+  function bbcLinkTag(roundKey, idx){
+    const l=BBC_LINKS[roundKey+'-'+idx]; if(!l) return '';
+    return ' · <a href="'+l.url+'" target="_blank" rel="noopener noreferrer">'+(BBC_LABEL[l.type]||'📰 BBC')+'</a>';
+  }
   function teamHistory(tm){
     const id=TEAMS[tm][1];
     const rows=[];
@@ -641,17 +651,18 @@
         rows.push('<div class="sRow"><span>Group stage</span><span>'+res+us+'–'+them+' vs '+opp+'</span></div>');
       });
     }
-    const RESULT_ROUNDS=[ {label:'Round of 32', data:REAL}, {label:'Round of 16', data:REAL16} ];
+    const RESULT_ROUNDS=[ {label:'Round of 32', data:REAL, key:'R32'}, {label:'Round of 16', data:REAL16, key:'R16'} ];
     RESULT_ROUNDS.forEach(rd=>{
-      const m=rd.data.find(r=>r.a===tm || r.b===tm); if(!m) return;
+      const idx=rd.data.findIndex(r=>r.a===tm || r.b===tm); if(idx<0) return;
+      const m=rd.data[idx];
       const oppIdx=(m.a===tm)? m.b : m.a, oppName=TEAMS[oppIdx][0];
       let text;
       if(m.winner!=null){
         const us=(m.a===tm)? m.hs : m.as, them=(m.a===tm)? m.as : m.hs;
-        text=(m.winner===tm?'Won ':'Lost ')+us+'–'+them+' vs '+oppName+(m.note?' ('+m.note+')':'');
+        text=(m.winner===tm?'Won ':'Lost ')+us+'–'+them+' vs '+oppName+(m.note?' ('+m.note+')':'')+bbcLinkTag(rd.key, idx);
       } else if(m.live){
         const us=(m.a===tm)? m.live.hs : m.live.as, them=(m.a===tm)? m.live.as : m.live.hs;
-        text=us+'–'+them+' vs '+oppName+' · <span class="liveDot"></span> LIVE '+m.live.minute;
+        text=us+'–'+them+' vs '+oppName+' · <span class="liveDot"></span> LIVE '+m.live.minute+bbcLinkTag(rd.key, idx);
       } else {
         text='vs '+oppName+' · not yet played';
       }
