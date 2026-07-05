@@ -895,7 +895,7 @@
   function applyRealResults(){ REAL.forEach(r=>{ if(r.winner!=null) pick(rounds[0][r.winner]); }); }
   // real Round-of-16 results, keyed by rounds[2] index (same order as FIXTURES16); a/b are TEAMS[] leaf indices
   const REAL16=[
-    {a:0,b:3,winner:null,live:{hs:0,as:2,minute:"90'"}},                // Brazil v Norway — LIVE, Norway lead 2-0
+    {a:0,b:3,hs:1,as:2,winner:3},                // Norway 2-1 Brazil — huge upset
     {a:4,b:6,winner:null},                            // Mexico v England
     {a:8,b:11,winner:null},                           // Argentina v Egypt
     {a:12,b:14,winner:null},                          // Switzerland v Colombia
