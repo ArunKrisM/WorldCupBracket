@@ -651,6 +651,8 @@
     'R32-13': {url:'https://www.bbc.co.uk/sport/football/live/cjwg760j4jnt', type:'live'},        // South Africa v Canada
     'R32-14': {url:'https://www.bbc.co.uk/sport/football/live/cpd326dj9xvt', type:'live'},        // Sweden v France
     'R32-15': {url:'https://www.bbc.co.uk/sport/football/live/c621z2nlj2yt', type:'live'},        // Germany v Paraguay
+    'R16-6': {url:'https://www.bbc.co.uk/sport/football/live/cx2jw3e9gq0t', type:'live'},         // Canada v Morocco
+    'R16-7': {url:'https://www.bbc.co.uk/iplayer/event/fifa-world-cup', type:'iplayer'},          // Paraguay v France
   };
   const BBC_LABEL={live:'📰 BBC Live', iplayer:'📺 iPlayer', sounds:'🎙️ Sounds'};
   function bbcLinkTag(roundKey, idx){
@@ -718,7 +720,7 @@
     const label = status==='live' ? '📺 Follow live on BBC'
       : status==='finished' ? '📺 Catch up via BBC'
       : '📺 BBC coverage & kick-off times';
-    return '<div class="sRow"><span>Watch</span><span><a href="https://www.bbc.co.uk/sport/football/world-cup/schedule" target="_blank" rel="noopener noreferrer">'+label+'</a></span></div>';
+    return '<div class="sRow"><span>Follow</span><span><a href="https://www.bbc.co.uk/sport/football/world-cup/schedule" target="_blank" rel="noopener noreferrer">'+label+'</a></span></div>';
   }
   function openInfo(node){
     if(!node || node.team==null) return;
