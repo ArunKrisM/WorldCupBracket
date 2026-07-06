@@ -143,6 +143,30 @@
     padding:4px 9px;border-radius:14px;border:1.5px solid #a855f7;color:var(--ink);background:transparent;cursor:pointer}
   .chip b{color:var(--sub);font-size:14px;line-height:1}
   .chip.out{border-color:#9aa0a6;border-style:dashed;opacity:.6;text-decoration:line-through}
+  .cupBtn{border-color:var(--gold);color:var(--gold);font-weight:700}
+  .cupBtn:hover{background:rgba(207,159,51,.1)}
+  .cupChip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:700;
+    padding:5px 11px;border-radius:14px;border:1.5px solid var(--gold);color:var(--gold);
+    background:transparent;cursor:pointer}
+  .cupChip .agree{color:var(--sub);font-weight:600}
+  .cupGrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0 4px}
+  .cupFlag{aspect-ratio:1;border-radius:50%;border:2px solid var(--ghostborder);background:var(--bg);
+    display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer;
+    transition:border-color .15s;position:relative}
+  .cupFlag:hover{border-color:var(--gold)}
+  .cupFlag svg{width:100%;height:100%}
+  .cupYourPick{display:flex;align-items:center;gap:12px;background:rgba(207,159,51,.08);
+    border:1px solid var(--gold);border-radius:12px;padding:12px 14px;margin-bottom:16px}
+  .cupYourPick .cf{width:44px;height:44px;border-radius:50%;overflow:hidden;flex-shrink:0;border:2px solid var(--gold)}
+  .cupYourPick .cf svg{width:100%;height:100%}
+  .cupYourPick .lbl{font-size:10.5px;color:var(--sub);font-weight:700;text-transform:uppercase}
+  .cupYourPick .tm{font-size:17px;font-weight:800}
+  .cupBar{display:flex;align-items:center;gap:9px;margin-bottom:8px}
+  .cupBar .cbf{width:24px;height:24px;border-radius:50%;overflow:hidden;flex-shrink:0;border:1px solid var(--ghostborder)}
+  .cupBar .cbf svg{width:100%;height:100%}
+  .cupTrack{flex:1;height:18px;background:var(--ghostborder);border-radius:6px;overflow:hidden}
+  .cupFill{height:100%;background:linear-gradient(90deg,var(--gold),#e8c15a);border-radius:6px;transition:width .5s ease}
+  .cupPct{font-size:12px;font-weight:800;min-width:32px;text-align:right}
   .resNote{text-align:center;font-size:12px;color:var(--sub);margin-top:6px;margin-bottom:4px}
   /* ---------- desktop: give the layout room to breathe ---------- */
   @media (min-width: 860px){
@@ -203,6 +227,7 @@
     <div class="toolbar setup">
       <input id="nameInput" class="nameInput" placeholder="Your name" maxlength="24" spellcheck="false" autocomplete="off">
       <select id="followSel" class="fSel"><option value="">⭐ Follow a team…</option></select>
+      <span id="cupBtnHolder"></span>
     </div>
     <div id="followChips" class="chips"></div>
     <div class="resNote">⚽ Results loaded as of 5 Jul 2026 · rest of the bracket is yours to predict</div>
@@ -218,6 +243,7 @@
       <li><b>Chalk</b> auto-fills the rest by favourites · <b>Chaos</b> auto-fills it by coin flip — both animate round by round.</li>
       <li><b>⚡</b> marks an upset — an underdog beating a stronger side.</li>
       <li><b>Follow your team</b> from the dropdown to spotlight your sweepstake side (with a cheeky message if they're already out). Press &amp; hold a flag for its real venue, date, and (once played) real score.</li>
+      <li><b>🔮 Predict the Champion</b> — separate from your bracket, pick who you think actually wins it all, and see how your pick compares to everyone else using the site.</li>
       <li>Round of 32 results already played are locked in for you — everything from there on (Round of 16 onward) is yours to predict, or auto-fill with <b>Chalk</b> or <b>Chaos</b>.</li>
       <li><b>Undo</b> steps back · <b>Reset</b> clears the board · <b>Share</b> exports an image card to post.</li>
       <li><b>🔇</b> toggles sound · <b>🌙 / ☀</b> toggles dark mode. Your picks live in the link, so a shared URL reopens your exact bracket.</li>
@@ -226,6 +252,8 @@
 </div>
 <div id="sheetBack" class="sheetBack"></div>
 <div id="sheet" class="sheet"></div>
+<div id="cupSheetBack" class="sheetBack"></div>
+<div id="cupSheet" class="sheet"></div>
 <div id="toast" class="toast"></div>
 <canvas id="confetti"></canvas>
 
@@ -589,11 +617,95 @@
 
   const host=document.getElementById('svgHost');
   const stage=document.querySelector('.stage');
-  let flyingSet=new Set(), animating=false, simRunning=false, followed=new Set(), userName='';
+  let flyingSet=new Set(), animating=false, simRunning=false, followed=new Set(), userName='', cupPick=null;
   let suppressClick=false;
   const sheet=document.getElementById('sheet'), sheetBack=document.getElementById('sheetBack');
   const RN=['Round of 32','Round of 16','Quarter-final','Semi-final','Final'];
   function closeSheet(){ sheet.classList.remove('show'); sheetBack.classList.remove('show'); }
+
+  // ---------- Predict the Champion ----------
+  const cupSheet=document.getElementById('cupSheet'), cupSheetBack=document.getElementById('cupSheetBack');
+  function closeCupSheet(){ cupSheet.classList.remove('show'); cupSheetBack.classList.remove('show'); }
+  function eligibleCupTeams(){ return TEAMS.map((_,i)=>i).filter(i=>!realStatus(i).out); }
+  function renderCupButton(){
+    const holder=document.getElementById('cupBtnHolder'); if(!holder) return;
+    if(cupPick==null){
+      holder.innerHTML='<button id="cupBtn" class="ghost cupBtn">🔮 Predict the Champion</button>';
+      document.getElementById('cupBtn').addEventListener('click', openCupPicker);
+    } else {
+      const id=TEAMS[cupPick][1], name=TEAMS[cupPick][0];
+      holder.innerHTML='<button id="cupBtn" class="cupChip">🔮 '+name+'</button>';
+      document.getElementById('cupBtn').addEventListener('click', openCupComparison);
+    }
+  }
+  function openCupPicker(){
+    const teams=eligibleCupTeams();
+    let html='<h2>🔮 Predict the Champion</h2>'+
+      '<div class="sNick">Separate from your bracket — who do you think actually wins the whole thing?</div>'+
+      '<div class="cupGrid">';
+    teams.forEach(i=>{
+      const id=TEAMS[i][1];
+      html+='<div class="cupFlag" data-i="'+i+'"><svg viewBox="0 0 60 40" preserveAspectRatio="xMidYMid slice">'+FLAGS[id]+'</svg></div>';
+    });
+    html+='</div><div class="sBtns"><button class="ghost" id="cupSheetClose">Close</button></div>';
+    cupSheet.innerHTML=html;
+    cupSheet.querySelectorAll('.cupFlag').forEach(el=>{
+      el.addEventListener('click',()=>{
+        cupPick=+el.getAttribute('data-i');
+        try{ localStorage.setItem('wc26-cuppick', cupPick); }catch(e){}
+        cloudSave(true);
+        renderCupButton();
+        openCupComparison();
+      });
+    });
+    document.getElementById('cupSheetClose').addEventListener('click',closeCupSheet);
+    cupSheetBack.classList.add('show'); cupSheet.classList.add('show');
+  }
+  async function openCupComparison(){
+    if(cupPick==null){ openCupPicker(); return; }
+    const id=TEAMS[cupPick][1], name=TEAMS[cupPick][0];
+    let html='<h2>Your Champion Pick</h2>'+
+      '<div class="cupYourPick"><div class="cf"><svg viewBox="0 0 60 40" preserveAspectRatio="xMidYMid slice">'+FLAGS[id]+'</svg></div>'+
+      '<div><div class="lbl">Your pick</div><div class="tm">'+name+'</div></div></div>'+
+      '<div class="sNick" style="margin-bottom:6px">👥 What the crowd thinks</div>'+
+      '<div id="cupCrowdBars"><div class="sNote">Loading…</div></div>'+
+      '<div class="sRow"><span>This site\'s model favours</span><span id="cupModelPick">—</span></div>'+
+      '<div class="sBtns"><button class="ghost" id="cupChangeBtn">Change my pick</button><button class="ghost" id="cupSheetClose2">Close</button></div>';
+    cupSheet.innerHTML=html;
+    document.getElementById('cupChangeBtn').addEventListener('click', openCupPicker);
+    document.getElementById('cupSheetClose2').addEventListener('click',closeCupSheet);
+    cupSheetBack.classList.add('show'); cupSheet.classList.add('show');
+
+    // model favourite — reuse the app's own Elo-based cup odds, computed from real results so far
+    let bestIdx=null, bestVal=-1;
+    TEAMS.forEach((_,i)=>{ const v=cupOdds[i]||0; if(v>bestVal){ bestVal=v; bestIdx=i; } });
+    if(bestIdx!=null) document.getElementById('cupModelPick').textContent=TEAMS[bestIdx][0]+' ('+fmtPct(bestVal)+')';
+
+    const counts=await crowdPickCounts();
+    const bars=document.getElementById('cupCrowdBars');
+    if(!counts){ bars.innerHTML='<div class="sNote">Not enough data yet — be one of the first to pick!</div>'; return; }
+    const total=Object.values(counts).reduce((a,b)=>a+b,0);
+    if(total===0){ bars.innerHTML='<div class="sNote">You\'re the first to pick — check back as others join in.</div>'; return; }
+    const sorted=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,6);
+    bars.innerHTML='<div class="sNote" style="margin-bottom:8px">'+total+' pick'+(total===1?'':'s')+' so far</div>'+
+      sorted.map(([tIdx,c])=>{
+        const pct=Math.round(100*c/total);
+        const tid=TEAMS[+tIdx][1];
+        return '<div class="cupBar"><div class="cbf"><svg viewBox="0 0 60 40" preserveAspectRatio="xMidYMid slice">'+FLAGS[tid]+'</svg></div>'+
+          '<div class="cupTrack"><div class="cupFill" style="width:'+pct+'%"></div></div>'+
+          '<div class="cupPct">'+pct+'%</div></div>';
+      }).join('');
+  }
+  async function crowdPickCounts(){
+    if(!sb) return null;
+    try{
+      const { data, error } = await sb.from('players').select('cup_pick').not('cup_pick','is',null);
+      if(error) throw error;
+      const counts={};
+      data.forEach(r=>{ if(r.cup_pick!=null) counts[r.cup_pick]=(counts[r.cup_pick]||0)+1; });
+      return counts;
+    }catch(e){ console.error('crowdPickCounts failed', e); return null; }
+  }
   // rounds tracked with real results so far, in chronological order — extend this list as later rounds get their own REAL-style arrays
   // real group-stage results for all 32 teams: [opponent, ourGoals, theirGoals], chronological
   const GROUPS={
@@ -967,6 +1079,7 @@
       if(f0!=null&&f1!=null) lines.push('Final: '+TEAMS[f0][0]+' vs '+TEAMS[f1][0]);
       else lines.push('My picks so far…');
     }
+    if(cupPick!=null) lines.push('🔮 My champion pick: '+TEAMS[cupPick][0]);
     lines.push('Predict yours 👇');
     return lines.join('\n');
   }
@@ -1012,7 +1125,9 @@
   }
   async function makeShareCard(){
     const dark=document.body.classList.contains('dark');
-    const W=1080, BR=1080, headTop=176, footH=84, H=headTop+BR+footH;
+    const W=1080, BR=1080, headTop=176, footH=84, cupBandH=140;
+    const hasCup=(cupPick!=null);
+    const H=headTop+BR+(hasCup?cupBandH:0)+footH;
     const cv=document.createElement('canvas'); cv.width=W; cv.height=H;
     const x=cv.getContext('2d'); let ink,sub; const gold='#cf9f33';
     const cyB=headTop+BR/2;
@@ -1049,6 +1164,24 @@
         x.drawImage(em,ex,ey,ew,eh);
         x.restore();
       }catch(e){ console.error('share: emblem draw failed',e); }
+    }
+    if(hasCup){
+      const bandY=headTop+BR+18;
+      x.strokeStyle=dark?'rgba(120,110,90,0.35)':'rgba(90,84,70,0.25)'; x.lineWidth=1;
+      x.beginPath(); x.moveTo(90,bandY); x.lineTo(W-90,bandY); x.stroke();
+      const cid=TEAMS[cupPick][1], cname=TEAMS[cupPick][0];
+      lab('🔮 MY CHAMPION PICK', 540, bandY+30, 22, sub, '700');
+      lab(cname.toUpperCase(), 540, bandY+70, 42, gold, '800');
+      let pctText='Do you agree?';
+      try{
+        const counts=await crowdPickCounts();
+        if(counts){
+          const total=Object.values(counts).reduce((a,b)=>a+b,0);
+          const mine=counts[cupPick]||0;
+          if(total>0) pctText=Math.round(100*mine/total)+'% of the crowd agrees \u00b7 do you?';
+        }
+      }catch(e){}
+      lab(pctText, 540, bandY+108, 24, sub, '500');
     }
     lab('Create your own bracket \u00b7 wc26bracket.co.uk',540,H-44,24,sub,'600');
     return await new Promise(res=>cv.toBlob(res,'image/png',0.95));
@@ -1180,19 +1313,20 @@
         if(row.name){ userName=row.name; const ni=document.getElementById('nameInput'); if(ni) ni.value=userName; try{localStorage.setItem('wc26-name',userName);}catch(e){} }
         if(row.bracket){ applyCode(row.bracket); applyRealResults(); applyRealResults16(); }
         if(row.followed && row.followed.length){ followed=new Set(row.followed); try{localStorage.setItem('wc26-follow',[...followed].join(','));}catch(e){} }
+        if(row.cup_pick!=null){ cupPick=row.cup_pick; try{localStorage.setItem('wc26-cuppick',cupPick);}catch(e){} }
       } else {
         await cloudSave(true);
       }
       const note=document.querySelector('.resNote');
       if(note) note.textContent+=' · ☁️ synced to your browser';
-      renderChips(); render();
+      renderChips(); renderCupButton(); render();
     }catch(e){ /* offline, not configured, or blocked — app keeps working device-local only */ }
   }
   function cloudSave(immediate){
     clearTimeout(cloudSaveTimer);
     const doSave=async()=>{
       if(!sb || !sbUser) return;
-      try{ await sb.from('players').upsert({ id:sbUser.id, name:userName, followed:[...followed], bracket:encode() }); }catch(e){}
+      try{ await sb.from('players').upsert({ id:sbUser.id, name:userName, followed:[...followed], bracket:encode(), cup_pick:cupPick }); }catch(e){}
     };
     if(immediate) return doSave();
     cloudSaveTimer=setTimeout(doSave, 800);
@@ -1204,6 +1338,8 @@
   else { try{ const s=localStorage.getItem('wc26-bracket'); if(s) applyCode(s); }catch(e){} }
   applyRealResults();
   applyRealResults16();
+  try{ const cp=localStorage.getItem('wc26-cuppick'); if(cp!=null && cp!=='') cupPick=+cp; }catch(e){}
+  renderCupButton();
   cloudInit();
   try{ userName=localStorage.getItem('wc26-name')||''; }catch(e){}
   const nameInput=document.getElementById('nameInput');
