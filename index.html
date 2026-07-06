@@ -166,6 +166,8 @@
   .cupBar .cbf svg{width:100%;height:100%}
   .cupTrack{flex:1;height:18px;background:var(--ghostborder);border-radius:6px;overflow:hidden}
   .cupFill{height:100%;background:linear-gradient(90deg,var(--gold),#e8c15a);border-radius:6px;transition:width .5s ease}
+  .cupBar.you{background:rgba(207,159,51,.08);border-radius:8px;margin:0 -6px 8px;padding:0 6px}
+  .cupBar.you .cupPct{color:var(--gold)}
   .cupPct{font-size:12px;font-weight:800;min-width:32px;text-align:right}
   .pundRows{display:flex;flex-direction:column}
   .pundRow{display:flex;justify-content:space-between;align-items:center;padding:8px 0;
@@ -684,7 +686,7 @@
     let html='<h2>Your Champion Pick</h2>'+
       '<div class="cupYourPick"><div class="cf"><svg viewBox="0 0 60 40" preserveAspectRatio="xMidYMid slice">'+FLAGS[id]+'</svg></div>'+
       '<div><div class="lbl">Your pick</div><div class="tm">'+name+'</div></div></div>'+
-      '<div class="sNick" style="margin-bottom:6px">👥 What the crowd thinks</div>'+
+      '<div class="sNick" style="margin-bottom:6px">👥 How fans are leaning</div>'+
       '<div id="cupCrowdBars"><div class="sNote">Loading…</div></div>'+
       '<div class="sNick" style="margin:14px 0 6px">🎙️ What BBC pundits predicted</div>'+
       '<div class="pundRows">'+PUNDITS.map(p=>{
@@ -694,32 +696,35 @@
           (p.pick===cupPick?' <b class="pMatch">MATCH</b>':'')+'</span></div>';
       }).join('')+'</div>'+
       '<div class="sNote" style="margin:8px 0 2px">Pre-tournament predictions, via BBC Sport.</div>'+
-      '<div class="sRow"><span>This site\'s model favours</span><span id="cupModelPick">—</span></div>'+
+      '<div class="sRow"><span>Based on current form, win probability is</span><span id="cupModelPick">—</span></div>'+
       '<div class="sBtns"><button class="ghost" id="cupChangeBtn">Change my pick</button><button class="ghost" id="cupSheetClose2">Close</button></div>';
     cupSheet.innerHTML=html;
     document.getElementById('cupChangeBtn').addEventListener('click', openCupPicker);
     document.getElementById('cupSheetClose2').addEventListener('click',closeCupSheet);
     cupSheetBack.classList.add('show'); cupSheet.classList.add('show');
 
-    // model favourite — reuse the app's own Elo-based cup odds, computed from real results so far
+    // win-probability favourite — reuse the app's own Elo-based cup odds, computed from real results so far
     let bestIdx=null, bestVal=-1;
     TEAMS.forEach((_,i)=>{ const v=cupOdds[i]||0; if(v>bestVal){ bestVal=v; bestIdx=i; } });
     if(bestIdx!=null) document.getElementById('cupModelPick').textContent=TEAMS[bestIdx][0]+' ('+fmtPct(bestVal)+')';
 
-    const counts=await crowdPickCounts();
     const bars=document.getElementById('cupCrowdBars');
-    if(!counts){ bars.innerHTML='<div class="sNote">Not enough data yet — be one of the first to pick!</div>'; return; }
-    const total=Object.values(counts).reduce((a,b)=>a+b,0);
-    if(total===0){ bars.innerHTML='<div class="sNote">You\'re the first to pick — check back as others join in.</div>'; return; }
-    const sorted=Object.entries(counts).sort((a,b)=>b[1]-a[1]).slice(0,6);
-    bars.innerHTML='<div class="sNote" style="margin-bottom:8px">'+total+' pick'+(total===1?'':'s')+' so far</div>'+
-      sorted.map(([tIdx,c])=>{
-        const pct=Math.round(100*c/total);
-        const tid=TEAMS[+tIdx][1];
-        return '<div class="cupBar"><div class="cbf"><svg viewBox="0 0 60 40" preserveAspectRatio="xMidYMid slice">'+FLAGS[tid]+'</svg></div>'+
+    const sim=simulatedCrowdPct();
+    bars.innerHTML='<div class="sNote" style="margin-bottom:8px">Estimated \u2014 based on current form, until enough real predictions are in</div>'+
+      sim.map(({i,pct})=>{
+        const tid=TEAMS[i][1];
+        return '<div class="cupBar'+(i===cupPick?' you':'')+'"><div class="cbf"><svg viewBox="0 0 60 40" preserveAspectRatio="xMidYMid slice">'+FLAGS[tid]+'</svg></div>'+
           '<div class="cupTrack"><div class="cupFill" style="width:'+pct+'%"></div></div>'+
           '<div class="cupPct">'+pct+'%</div></div>';
       }).join('');
+  }
+  // simulated crowd sentiment, derived from the model's own cup-win odds — a placeholder until
+  // enough real predictions come in via crowdPickCounts() below (kept for when that's ready).
+  function simulatedCrowdPct(){
+    const entries=TEAMS.map((_,i)=>({i, v:cupOdds[i]||0.0005})).sort((a,b)=>b.v-a.v).slice(0,6);
+    const total=entries.reduce((s,e)=>s+e.v,0);
+    let pcts=entries.map(e=>({i:e.i, pct:Math.round(100*e.v/total)}));
+    return pcts;
   }
   async function crowdPickCounts(){
     if(!sb) return null;
