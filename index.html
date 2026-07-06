@@ -795,23 +795,49 @@
   // ---------- events ----------
   function nodeFrom(t){ const r=+t.getAttribute('data-r'),i=+t.getAttribute('data-i'); return (r===0)?rounds[0][i]:rounds[r][i]; }
 
+  const supportsOffsetPath = (typeof CSS!=='undefined' && CSS.supports && CSS.supports('offset-path','path("M0 0L1 1")'));
+  const isDesktopView = window.matchMedia && window.matchMedia('(min-width: 860px)').matches;
   function animateFly(child, parent, done){
     const scale=(host.clientWidth||W)/W;
     const sx=child.x*scale, sy=child.y*scale, ex=parent.x*scale, ey=parent.y*scale;
     const sd=2*child.r*scale, ratio=Math.max(2*parent.r*scale,6)/sd;
-    const dx=ex-sx, dy=ey-sy;
     const fly=document.createElement('div'); fly.className='fly';
-    fly.style.cssText='left:'+sx+'px;top:'+sy+'px;width:'+sd+'px;height:'+sd+'px;transform:translate(-50%,-50%);';
+    fly.style.cssText='left:0;top:0;width:'+sd+'px;height:'+sd+'px;';
     fly.innerHTML='<svg viewBox="0 0 60 40" preserveAspectRatio="xMidYMid slice" width="100%" height="100%">'+FLAGS[TEAMS[child.team][1]]+'</svg>';
     stage.appendChild(fly);
-    fly.getBoundingClientRect();   // commit start frame
-    fly.style.transition='transform .5s cubic-bezier(.33,.86,.32,1),opacity .5s ease';
-    fly.style.transform='translate(-50%,-50%) translate('+dx+'px,'+dy+'px) scale('+ratio+')';
-    if(parent.r===0) fly.style.opacity='0';
+    const dur = isDesktopView ? 1.05 : 0.6;
     let called=false;
     const fin=()=>{ if(called) return; called=true; done(); requestAnimationFrame(()=>fly.remove()); };
+
+    if(supportsOffsetPath && parent.round!==5){
+      // travel the exact bracket path this pick takes: straight out to the shared radius (the
+      // "spoke"), then curve along that radius to the parent's angle (the "arc") — matching
+      // precisely what's drawn on the bracket, rather than a straight diagonal shortcut.
+      const rp=Rn[parent.round];
+      const [elbowX,elbowY]=polar(rp, child.angle);
+      const sweep=(parent.angle>child.angle)?1:0;
+      const d='M '+sx+' '+sy+' L '+(elbowX*scale)+' '+(elbowY*scale)+' A '+(rp*scale)+' '+(rp*scale)+' 0 0 '+sweep+' '+ex+' '+ey;
+      fly.style.offsetPath="path('"+d+"')";
+      fly.style.offsetPosition='0px 0px';
+      fly.style.offsetRotate='0deg';
+      fly.style.offsetDistance='0%';
+      fly.style.transform='translate(-50%,-50%) scale(1)';
+      fly.getBoundingClientRect();
+      fly.style.transition='offset-distance '+dur+'s cubic-bezier(.4,.05,.3,1), transform '+dur+'s cubic-bezier(.4,.05,.3,1), opacity '+dur+'s ease';
+      fly.style.offsetDistance='100%';
+      fly.style.transform='translate(-50%,-50%) scale('+ratio+')';
+    } else {
+      // straight-line fallback (older browsers, or the final's stub-to-centre case)
+      const dx=ex-sx, dy=ey-sy;
+      fly.style.left=sx+'px'; fly.style.top=sy+'px';
+      fly.style.transform='translate(-50%,-50%)';
+      fly.getBoundingClientRect();
+      fly.style.transition='transform '+dur+'s cubic-bezier(.33,.86,.32,1),opacity '+dur+'s ease';
+      fly.style.transform='translate(-50%,-50%) translate('+dx+'px,'+dy+'px) scale('+ratio+')';
+    }
+    if(parent.r===0) fly.style.opacity='0';
     fly.addEventListener('transitionend', fin);
-    setTimeout(fin, 600);
+    setTimeout(fin, dur*1000+150);
   }
   const reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   const history=[];
