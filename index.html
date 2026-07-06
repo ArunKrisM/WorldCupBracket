@@ -167,6 +167,14 @@
   .cupTrack{flex:1;height:18px;background:var(--ghostborder);border-radius:6px;overflow:hidden}
   .cupFill{height:100%;background:linear-gradient(90deg,var(--gold),#e8c15a);border-radius:6px;transition:width .5s ease}
   .cupPct{font-size:12px;font-weight:800;min-width:32px;text-align:right}
+  .pundRows{display:flex;flex-direction:column}
+  .pundRow{display:flex;justify-content:space-between;align-items:center;padding:8px 0;
+    border-top:1px solid var(--line);font-size:13.5px}
+  .pundRow:first-child{border-top:none}
+  .pName{color:var(--sub)}
+  .pPick{font-weight:700;display:flex;align-items:center;gap:6px}
+  .pPick svg{width:20px;height:14px;border-radius:3px;flex-shrink:0}
+  .pMatch{font-size:10px;font-weight:800;color:var(--gold);border:1px solid var(--gold);border-radius:5px;padding:1px 5px}
   .resNote{text-align:center;font-size:12px;color:var(--sub);margin-top:6px;margin-bottom:4px}
   /* ---------- desktop: give the layout room to breathe ---------- */
   @media (min-width: 860px){
@@ -661,14 +669,31 @@
     document.getElementById('cupSheetClose').addEventListener('click',closeCupSheet);
     cupSheetBack.classList.add('show'); cupSheet.classList.add('show');
   }
+  // BBC pundits' pre-tournament predictions for the winner, as reported via BBC Sport (syndicated by AOL).
+  // Team indices: FRA=29, ENG=6.
+  const PUNDITS=[
+    {name:'Alan Shearer', pick:29},
+    {name:'Danny Murphy', pick:29},
+    {name:'Olivier Giroud', pick:29},
+    {name:'Wayne Rooney', pick:6}
+  ];
   async function openCupComparison(){
     if(cupPick==null){ openCupPicker(); return; }
     const id=TEAMS[cupPick][1], name=TEAMS[cupPick][0];
+    const matches=PUNDITS.filter(p=>p.pick===cupPick).length;
     let html='<h2>Your Champion Pick</h2>'+
       '<div class="cupYourPick"><div class="cf"><svg viewBox="0 0 60 40" preserveAspectRatio="xMidYMid slice">'+FLAGS[id]+'</svg></div>'+
       '<div><div class="lbl">Your pick</div><div class="tm">'+name+'</div></div></div>'+
       '<div class="sNick" style="margin-bottom:6px">👥 What the crowd thinks</div>'+
       '<div id="cupCrowdBars"><div class="sNote">Loading…</div></div>'+
+      '<div class="sNick" style="margin:14px 0 6px">🎙️ What BBC pundits predicted</div>'+
+      '<div class="pundRows">'+PUNDITS.map(p=>{
+        const tid=TEAMS[p.pick][1];
+        return '<div class="pundRow"><span class="pName">'+p.name+'</span>'+
+          '<span class="pPick"><svg viewBox="0 0 60 40" preserveAspectRatio="xMidYMid slice">'+FLAGS[tid]+'</svg>'+TEAMS[p.pick][0]+
+          (p.pick===cupPick?' <b class="pMatch">MATCH</b>':'')+'</span></div>';
+      }).join('')+'</div>'+
+      '<div class="sNote" style="margin:8px 0 2px">Pre-tournament predictions, via BBC Sport.</div>'+
       '<div class="sRow"><span>This site\'s model favours</span><span id="cupModelPick">—</span></div>'+
       '<div class="sBtns"><button class="ghost" id="cupChangeBtn">Change my pick</button><button class="ghost" id="cupSheetClose2">Close</button></div>';
     cupSheet.innerHTML=html;
