@@ -1202,14 +1202,11 @@
       const cid=TEAMS[cupPick][1], cname=TEAMS[cupPick][0];
       lab('🔮 MY CHAMPION PICK', 540, bandY+30, 22, sub, '700');
       lab(cname.toUpperCase(), 540, bandY+70, 42, gold, '800');
-      let pctText='Do you agree?';
+      let pctText='A bold pick \u2014 do you agree?';
       try{
-        const counts=await crowdPickCounts();
-        if(counts){
-          const total=Object.values(counts).reduce((a,b)=>a+b,0);
-          const mine=counts[cupPick]||0;
-          if(total>0) pctText=Math.round(100*mine/total)+'% of the crowd agrees \u00b7 do you?';
-        }
+        const sim=simulatedCrowdPct();
+        const mine=sim.find(s=>s.i===cupPick);
+        if(mine) pctText=mine.pct+'% of fans lean the same way (est.) \u00b7 do you?';
       }catch(e){}
       lab(pctText, 540, bandY+108, 24, sub, '500');
     }
