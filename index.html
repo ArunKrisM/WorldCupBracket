@@ -1081,7 +1081,7 @@
   const REAL_QF=[
     {a:3,b:6,winner:null},                            // Norway v England
     {a:8,b:12,winner:null},                            // Argentina v Switzerland
-    {a:17,b:21,winner:null},                           // Belgium v Spain
+    {a:17,b:21,winner:null,live:{hs:0,as:1,minute:"38'"}},           // Belgium v Spain — LIVE, Spain lead 1-0 (64% possession)
     {a:24,b:29,hs:0,as:2,winner:29} // France 2-0 Morocco
   ];
   function qfLocked(idx){ const j=Math.floor(idx/2); const r=REAL_QF[j]; return !!(r && r.winner!=null); }
