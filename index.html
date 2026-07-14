@@ -1069,7 +1069,7 @@
   };
   const REAL_SF=[
     {a:6,b:8,winner:null},   // England v Argentina
-    {a:21,b:29,winner:null}  // Spain v France
+    {a:21,b:29,winner:null,live:{hs:2,as:0,minute:""}}  // Spain v France — LIVE, Spain lead 2-0
   ];
   function sfLocked(idx){ const j=Math.floor(idx/2); const r=REAL_SF[j]; return !!(r && r.winner!=null); }
   function applyRealResultsSF(){
