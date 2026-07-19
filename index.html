@@ -1094,7 +1094,7 @@
   function isLiveSF(node){ if(node.round!==3 || node.team==null) return false; const j=Math.floor(node.idx/2); const r=REAL_SF[j]; return !!(r && r.live && r.winner==null); }
   // the Final — a single match, not an array, since there's only one
   const FIXTURES_FINAL=['Sun 19 Jul','8:00 PM BST','East Rutherford, New Jersey'];
-  const REAL_FINAL={a:8,b:21,winner:null,live:{hs:0,as:0,minute:""}};   // Argentina v Spain
+  const REAL_FINAL={a:8,b:21,hs:0,as:1,winner:21};   // Spain 1-0 Argentina — Spain are World Cup 2026 Champions
   function finalLocked(){ return REAL_FINAL.winner!=null; }
   function applyRealResultsFinal(){
     if(REAL_FINAL.winner==null) return;
